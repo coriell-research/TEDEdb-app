@@ -33,7 +33,7 @@ selectIdUI <- function(id, choice_list) {
       pick(id, "disease", "Disease(s)", choice_list)
     ),
     mainPanel(
-      DT::dataTableOutput(NS(id, "table"))
+      dataTableOutput(NS(id, "table"))
     )
   )
 }
@@ -53,7 +53,24 @@ selectIdServer <- function(id, se) {
           disease %in% input$disease
       )
     })
-    output$table <- DT::renderDataTable(selected())
+    output$table <- renderDataTable({
+      datatable(
+        selected(),
+        rownames = FALSE,
+        colnames = c(
+          "ID" = "id", "BioProject" = "experiment",
+          "Contrast" = "contrast", "Cell Line" = "cell_line",
+          "Drug" = "drug", "Dose" = "dose", "Time (hr)" = "time_hr",
+          "Batch" = "batch", "Mutation" = "mutation",
+          "Comment" = "comment", "Description" = "desc",
+          "Epigenetic Class" = "epigenetic_class",
+          "Tissue" = "tissue", "Disease" = "disease"
+        ),
+        options = list(autoWidth = TRUE)
+      )
+    })
+
+    # Return the selected IDs
     reactive(rownames(selected()))
   })
 }
