@@ -1,7 +1,49 @@
 ## Perform PCA on the selected sample IDs
 ##
-##
+## PCA result object is returned and passed to the UMAP module
 ## ----------------------------------------------------------------------------
+
+plotBiplot <- function(d, x, y, col) {
+  vline <- function(x = 0, color = "black") {
+    list(
+      type = "line", y0 = 0, y1 = 1, yref = "paper", x0 = x, x1 = x,
+      line = list(color = color, dash = "dot")
+    )
+  }
+
+  hline <- function(y = 0, color = "black") {
+    list(
+      type = "line", x0 = 0, x1 = 1, xref = "paper", y0 = y, y1 = y,
+      line = list(color = color, dash = "dot")
+    )
+  }
+
+  plot_ly(
+    data = d,
+    customdata = rownames(d),
+    x = ~ get(x),
+    y = ~ get(y),
+    color = ~ get(col),
+    size = 12,
+    text = ~ paste(
+      "Contrast:", contrast, "\n",
+      "BioProject ID:", experiment, "\n",
+      "Epigenetic Class:", epigenetic_class, "\n",
+      "Tissue:", tissue, "\n",
+      "Disease:", disease
+    ),
+    type = "scatter",
+    mode = "markers"
+  ) |>
+    layout(
+      shapes = list(hline(), vline()),
+      dragmode = "lasso",
+      xaxis = list(title = paste(x)),
+      yaxis = list(title = paste(y)),
+      showlegend = FALSE
+    ) |>
+    event_register("plotly_selected")
+}
 
 # Set up the input parameters for PCA
 pcaUI <- function(id) {
@@ -10,14 +52,16 @@ pcaUI <- function(id) {
       awesomeRadio(
         NS(id, "features"),
         label = "Select features",
-        choices = c("Genes" = "gene", "Transposable Elements" = "TE", 
-                    "Both" = "both"),
+        choices = c(
+          "Genes" = "gene", "Transposable Elements" = "TE",
+          "Both" = "both"
+        ),
         selected = "gene",
         inline = TRUE
       ),
       awesomeRadio(
         NS(id, "dataset"),
-        label = "Select Data",
+        label = "Select data",
         choices = c(
           "logFC" = "lfc", "FDR" = "fdr", "Rank Stat" = "stat",
           "Avg. logCPM" = "lcpm"
@@ -60,8 +104,10 @@ pcaUI <- function(id) {
       pickerInput(
         NS(id, "algorithm"),
         label = "PCA algorithm",
-        choices = c("FastAuto" = "fast", "Irlba" = "irlba", 
-                    "Random" = "random", "Exact" = "exact"),
+        choices = c(
+          "FastAuto" = "fast", "Irlba" = "irlba",
+          "Random" = "random", "Exact" = "exact"
+        ),
         selected = "fast",
         multiple = FALSE
       ),
@@ -98,13 +144,12 @@ pcaUI <- function(id) {
             "BioProject" = "experiment"
           )
         ),
-        checkboxInput(NS(id, "loadings"), label = "Show Loadings", value = FALSE),
         checkboxInput(NS(id, "legend"), label = "Show Legend", value = FALSE),
         status = "danger",
         icon = icon("gear")
       ),
-      plotOutput(NS(id, "biplot"), brush = NS(id, "plot_brush")),
-      DT::dataTableOutput(NS(id, "table"))
+      plotlyOutput(NS(id, "biplot")),
+      dataTableOutput(NS(id, "table"))
     )
   )
 }
@@ -112,87 +157,79 @@ pcaUI <- function(id) {
 # PCA server
 pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    observeEvent(input$run, {
-      keep_rows <- switch(
-        input$features,
-        gene = rowData(se)$feature_type == "Gene",
-        TE = rowData(se)$feature_type == "TE",
-        both = rep(TRUE, nrow(se))
+    pcaobj <- bindEvent(reactive(input$run), {
+        keep_rows <- switch(input$features,
+          gene = rowData(se)$feature_type == "Gene",
+          TE = rowData(se)$feature_type == "TE",
+          both = rep(TRUE, nrow(se))
         )
-      
-      filtered <- se[keep_rows, keep()]
-      df <- data.frame(colData(filtered))
 
-      # Extract the selected data
-      M <- switch(input$dataset,
-        lfc = assay(filtered, "lfc"),
-        fdr = assay(filtered, "fdr"),
-        stat = t(impute(t(assay(filtered, "stat")))),
-        lcpm = assay(filtered, "lcpm")
-      )
+        filtered <- se[keep_rows, keep()]
+        df <- data.frame(colData(filtered))
 
-      algo <- switch(input$algorithm,
-        fast = FastAutoParam(),
-        irlba = IrlbaParam(),
-        random = RandomParam(),
-        exact = ExactParam()
-      )
-
-      # perform PCA
-      showModal(modalDialog("Performing PCA. Please Wait..."))
-      pcadata <- PCAtools::pca(
-        M,
-        metadata = df,
-        center = input$center,
-        scale = input$scale,
-        rank = min(input$rank, ncol(M)),
-        removeVar = input$removeVar,
-        BSPARAM = algo
-      )
-      removeModal()
-
-      output$biplot <- renderPlot({
-        biplot(
-          pcadata,
-          colby = input$col,
-          x = input$x,
-          y = input$y,
-          showLoadings = input$loadings,
-          legendPosition = if (isTRUE(input$legend)) "bottom" else "none",
-          lab = NULL,
-          hline = 0,
-          vline = 0,
-          hlineType = 2,
-          vlineType = 2,
-          sizeLoadingsNames = 4,
-          pointSize = 4
+        # Extract the selected data
+        M <- switch(input$dataset,
+          lfc = assay(filtered, "lfc"),
+          fdr = assay(filtered, "fdr"),
+          stat = t(impute(t(assay(filtered, "stat")))),
+          lcpm = assay(filtered, "lcpm")
         )
-      })
 
-      # PCs must be added to metadata for brushed points to be selected
-      df <- cbind(pcadata$rotated, pcadata$metadata)
-      
-      # Do not plot all PC data - only selected columns and rename in final table
-      keep_cols <- c(
-        "experiment", "contrast", "tissue", "cell_line", "disease",
-        "epigenetic_class"
-      )
-      new_names <- c(
-        "BioProject", "Contrast", "Tissue", "Cell Line", "Disease",
-        "Epigenetic Class"
-      )
-      output$table <- DT::renderDataTable({
-        pcdf <- brushedPoints(
-          df,
-          input$plot_brush,
-          xvar = input$x,
-          yvar = input$y
+        algo <- switch(input$algorithm,
+          fast = FastAutoParam(),
+          irlba = IrlbaParam(),
+          random = RandomParam(),
+          exact = ExactParam()
         )
-        pcdf <- pcdf[, keep_cols]
-        colnames(pcdf) <- new_names
-        rownames(pcdf) <- NULL
-        pcdf
-      })
+
+        # perform PCA
+        msg <- showNotification("Performing PCA. Please wait...",
+          type = "message",
+          duration = NULL, closeButton = FALSE
+        )
+        result <- PCAtools::pca(
+          M,
+          metadata = df,
+          center = input$center,
+          scale = input$scale,
+          rank = min(input$rank, ncol(M)),
+          removeVar = input$removeVar,
+          BSPARAM = algo
+        )
+        removeNotification(msg)
+        result
     })
+
+    # PCs must be added to metadata for brushed points to be selected
+    df <- cbind(pcaobj()$rotated, pcaobj()$metadata)
+
+    # Display a biplot of the PCA results
+    output$biplot <- renderPlotly({
+      b <- plotBiplot(df, x = input$x, y = input$y, col = input$col)
+      if (isTRUE(input$legend)) {
+        b |> layout(showlegend = TRUE)
+      } else {
+        b
+      }
+    })
+
+    # Do not plot all PC data - only selected columns and rename in final table
+    keep_cols <- c(
+      "experiment", "contrast", "tissue", "cell_line", "disease",
+      "epigenetic_class"
+    )
+    new_names <- c(
+      "BioProject", "Contrast", "Tissue", "Cell Line", "Disease",
+      "Epigenetic Class"
+    )
+    output$table <- renderDataTable({
+      d <- event_data("plotly_selected")
+      if (!is.null(d)) {
+        df2 <- df[d$customdata, keep_cols]
+        rownames(df2) <- NULL
+        df2
+      }
+    })
+    pcaobj
   })
 }
