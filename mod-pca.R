@@ -4,29 +4,29 @@
 ## ----------------------------------------------------------------------------
 
 # Function for performing PCA
-performPCA <- function(se, keep_cols, features, dataset, algorithm, center, scale, 
+performPCA <- function(se, keep_cols, features, dataset, algorithm, center, scale,
                        rank, removeVar) {
   keep_rows <- switch(features,
-                      gene = rowData(se)$feature_type == "Gene",
-                      TE = rowData(se)$feature_type == "TE",
-                      both = rep(TRUE, nrow(se))
+    gene = rowData(se)$feature_type == "Gene",
+    TE = rowData(se)$feature_type == "TE",
+    both = rep(TRUE, nrow(se))
   )
-  
+
   filtered <- se[keep_rows, keep_cols]
   df <- data.frame(colData(filtered))
   M <- switch(dataset,
-              lfc = assay(filtered, "lfc"),
-              fdr = assay(filtered, "fdr"),
-              stat = t(coriell::impute(t(assay(filtered, "stat")))),
-              lcpm = assay(filtered, "lcpm")
+    lfc = assay(filtered, "lfc"),
+    fdr = assay(filtered, "fdr"),
+    stat = t(coriell::impute(t(assay(filtered, "stat")))),
+    lcpm = assay(filtered, "lcpm")
   )
   algo <- switch(algorithm,
-                 fast = FastAutoParam(),
-                 irlba = IrlbaParam(),
-                 random = RandomParam(),
-                 exact = ExactParam()
+    fast = FastAutoParam(),
+    irlba = IrlbaParam(),
+    random = RandomParam(),
+    exact = ExactParam()
   )
-  
+
   PCAtools::pca(
     M,
     metadata = df,
@@ -44,7 +44,7 @@ plotBiplot <- function(obj, x, y, col) {
   data <- obj$rotated
   metadata <- obj$metadata
   d <- cbind(metadata, data)
-  
+
   vline <- function(x = 0, color = "black") {
     list(
       type = "line", y0 = 0, y1 = 1, yref = "paper", x0 = x, x1 = x,
@@ -198,20 +198,22 @@ pcaUI <- function(id) {
 # PCA server
 pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    
     # Perform PCA on 'Run'
     pcaobj <- reactive({
       msg <- showNotification("Performing PCA. Please wait...",
-                              type = "message", duration = NULL,
-                              closeButton = FALSE)
-      pcdata <- performPCA(se, keep(), input$features, 
-                           input$dataset, input$algorithm, 
-                           input$center, input$scale, 
-                           input$rank, input$removeVar)
+        type = "message", duration = NULL,
+        closeButton = FALSE
+      )
+      pcdata <- performPCA(
+        se, keep(), input$features,
+        input$dataset, input$algorithm,
+        input$center, input$scale,
+        input$rank, input$removeVar
+      )
       removeNotification(msg)
       pcdata
     }) |> bindEvent(input$run)
-    
+
     # Display a biplot of the PCA results
     output$biplot <- renderPlotly({
       b <- plotBiplot(pcaobj(), x = input$x, y = input$y, col = input$col)
@@ -240,6 +242,6 @@ pcaServer <- function(id, se, keep) {
         df2
       }
     })
-    return(pcaobj)
+    pcaobj
   })
 }
