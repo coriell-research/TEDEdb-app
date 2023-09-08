@@ -3,7 +3,48 @@
 ## PCA result object is returned and passed to the UMAP module
 ## ----------------------------------------------------------------------------
 
-plotBiplot <- function(d, x, y, col) {
+# Function for performing PCA
+performPCA <- function(se, keep_cols, features, dataset, algorithm, center, scale, 
+                       rank, removeVar) {
+  keep_rows <- switch(features,
+                      gene = rowData(se)$feature_type == "Gene",
+                      TE = rowData(se)$feature_type == "TE",
+                      both = rep(TRUE, nrow(se))
+  )
+  
+  filtered <- se[keep_rows, keep_cols]
+  df <- data.frame(colData(filtered))
+  M <- switch(dataset,
+              lfc = assay(filtered, "lfc"),
+              fdr = assay(filtered, "fdr"),
+              stat = t(coriell::impute(t(assay(filtered, "stat")))),
+              lcpm = assay(filtered, "lcpm")
+  )
+  algo <- switch(algorithm,
+                 fast = FastAutoParam(),
+                 irlba = IrlbaParam(),
+                 random = RandomParam(),
+                 exact = ExactParam()
+  )
+  
+  PCAtools::pca(
+    M,
+    metadata = df,
+    center = center,
+    scale = scale,
+    rank = min(rank, ncol(M)),
+    removeVar = removeVar,
+    BSPARAM = algo
+  )
+}
+
+# Function for plotting PCA results with plotly
+plotBiplot <- function(obj, x, y, col) {
+  # Extract components from the PCA object and bind intoa single data.frame
+  data <- obj$rotated
+  metadata <- obj$metadata
+  d <- cbind(metadata, data)
+  
   vline <- function(x = 0, color = "black") {
     list(
       type = "line", y0 = 0, y1 = 1, yref = "paper", x0 = x, x1 = x,
@@ -157,55 +198,23 @@ pcaUI <- function(id) {
 # PCA server
 pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    pcaobj <- bindEvent(reactive(input$run), {
-        keep_rows <- switch(input$features,
-          gene = rowData(se)$feature_type == "Gene",
-          TE = rowData(se)$feature_type == "TE",
-          both = rep(TRUE, nrow(se))
-        )
-
-        filtered <- se[keep_rows, keep()]
-        df <- data.frame(colData(filtered))
-
-        # Extract the selected data
-        M <- switch(input$dataset,
-          lfc = assay(filtered, "lfc"),
-          fdr = assay(filtered, "fdr"),
-          stat = t(impute(t(assay(filtered, "stat")))),
-          lcpm = assay(filtered, "lcpm")
-        )
-
-        algo <- switch(input$algorithm,
-          fast = FastAutoParam(),
-          irlba = IrlbaParam(),
-          random = RandomParam(),
-          exact = ExactParam()
-        )
-
-        # perform PCA
-        msg <- showNotification("Performing PCA. Please wait...",
-          type = "message",
-          duration = NULL, closeButton = FALSE
-        )
-        result <- PCAtools::pca(
-          M,
-          metadata = df,
-          center = input$center,
-          scale = input$scale,
-          rank = min(input$rank, ncol(M)),
-          removeVar = input$removeVar,
-          BSPARAM = algo
-        )
-        removeNotification(msg)
-        result
-    })
-
-    # PCs must be added to metadata for brushed points to be selected
-    df <- cbind(pcaobj()$rotated, pcaobj()$metadata)
-
+    
+    # Perform PCA on 'Run'
+    pcaobj <- reactive({
+      msg <- showNotification("Performing PCA. Please wait...",
+                              type = "message", duration = NULL,
+                              closeButton = FALSE)
+      pcdata <- performPCA(se, keep(), input$features, 
+                           input$dataset, input$algorithm, 
+                           input$center, input$scale, 
+                           input$rank, input$removeVar)
+      removeNotification(msg)
+      pcdata
+    }) |> bindEvent(input$run)
+    
     # Display a biplot of the PCA results
     output$biplot <- renderPlotly({
-      b <- plotBiplot(df, x = input$x, y = input$y, col = input$col)
+      b <- plotBiplot(pcaobj(), x = input$x, y = input$y, col = input$col)
       if (isTRUE(input$legend)) {
         b |> layout(showlegend = TRUE)
       } else {
@@ -224,12 +233,13 @@ pcaServer <- function(id, se, keep) {
     )
     output$table <- renderDataTable({
       d <- event_data("plotly_selected")
+      df <- pcaobj()$metadata
       if (!is.null(d)) {
         df2 <- df[d$customdata, keep_cols]
         rownames(df2) <- NULL
         df2
       }
     })
-    pcaobj
+    return(pcaobj)
   })
 }
