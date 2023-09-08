@@ -1,7 +1,7 @@
-suppressPackageStartupMessages(library(coriell))
 suppressPackageStartupMessages(library(shiny))
 suppressPackageStartupMessages(library(shinythemes))
 suppressPackageStartupMessages(library(shinyWidgets))
+suppressPackageStartupMessages(library(coriell))
 suppressPackageStartupMessages(library(plotly))
 suppressPackageStartupMessages(library(DT))
 suppressPackageStartupMessages(library(SummarizedExperiment))
@@ -11,6 +11,7 @@ suppressPackageStartupMessages(library(BiocSingular))
 # Load modules
 source("mod-selectIds.R")
 source("mod-pca.R")
+source("mod-umap.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
@@ -34,7 +35,10 @@ ui <- navbarPage(
         "2. PCA",
         pcaUI("pca")
       ),
-      tabPanel("3. UMAP"),
+      tabPanel(
+        "3. UMAP",
+        umapUI("umap")
+        ),
       tabPanel("4. Meta-Combine"),
       tabPanel("5. Ranked Expression")
     )
@@ -50,8 +54,9 @@ ui <- navbarPage(
 )
 
 server <- function(input, output, session) {
-  selected_ids <- selectIdServer("ids", se)
-  pcaData <- pcaServer("pca", se, selected_ids)
+  selected <- selectIdServer("ids", se)
+  pcaobj <- pcaServer("pca", se, selected)
+  umapServer("umap", pcaobj)
 }
 
 shinyApp(ui, server)
