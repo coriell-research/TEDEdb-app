@@ -12,6 +12,7 @@ suppressPackageStartupMessages(library(BiocSingular))
 source("mod-selectIds.R")
 source("mod-pca.R")
 source("mod-umap.R")
+source("mod-metaAnalysis.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
@@ -39,7 +40,10 @@ ui <- navbarPage(
         "3. UMAP",
         umapUI("umap")
         ),
-      tabPanel("4. Meta-Combine"),
+      tabPanel(
+        "4. Meta-Combine",
+        metaUI("meta")
+        ),
       tabPanel("5. Ranked Expression")
     )
   ),
@@ -57,6 +61,8 @@ server <- function(input, output, session) {
   selected <- selectIdServer("ids", se)
   pcaobj <- pcaServer("pca", se, selected)
   umapServer("umap", pcaobj)
+  metaServer("meta", se, selected)
+  
 }
 
 shinyApp(ui, server)

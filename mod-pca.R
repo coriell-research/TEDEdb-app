@@ -17,7 +17,7 @@ performPCA <- function(se, keep_cols, features, dataset, algorithm, center, scal
   M <- switch(dataset,
     lfc = assay(filtered, "lfc"),
     fdr = assay(filtered, "fdr"),
-    stat = t(coriell::impute(t(assay(filtered, "stat")))),
+    stat = assay(filtered, "stat"),
     lcpm = assay(filtered, "lcpm")
   )
   algo <- switch(algorithm,
@@ -104,7 +104,7 @@ pcaUI <- function(id) {
         NS(id, "dataset"),
         label = "Select data",
         choices = c(
-          "logFC" = "lfc", "FDR" = "fdr", "Rank Stat" = "stat",
+          "logFC" = "lfc", "FDR" = "fdr", "T-statistic" = "stat",
           "Avg. logCPM" = "lcpm"
         ),
         selected = "lfc",
