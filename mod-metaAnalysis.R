@@ -145,7 +145,7 @@ metaServer <- function(id, se, keep) {
         fmt_number(columns = c(Rep.logFC), decimals = 2) |> 
         tab_header(
           title = gt::md("**Meta-Significant Features**")
-        ) 
+        ) |> 
         opt_interactive(use_compact_mode = TRUE)
     })
   })
