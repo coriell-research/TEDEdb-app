@@ -42,7 +42,8 @@ metaUI <- function(id) {
         label = "Run Meta-Analysis",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      width = 3
     ),
     mainPanel(
       dropdownButton(
@@ -63,7 +64,7 @@ metaUI <- function(id) {
         icon = icon("gear")
         ),
       plotlyOutput(NS(id, "metavolcano")),
-      dataTableOutput(NS(id, "table"))
+      gt_output(NS(id, "table"))
       )
   )
 }
@@ -77,7 +78,6 @@ metaServer <- function(id, se, keep) {
       )
       filtered <- se[, keep()]
       
-      # Log P-values if selected
       selected_assay <- "fdr"
       if (isTRUE(input$logp)) {
         SummarizedExperiment::assay(filtered, "logp") <- log1p(
@@ -85,7 +85,7 @@ metaServer <- function(id, se, keep) {
           )
         selected_assay <- "logp"
       }
-      
+
       method <- switch(input$method,
                        Berger = metapod::parallelBerger, 
                        Fisher = metapod::parallelFisher, 
@@ -120,25 +120,33 @@ metaServer <- function(id, se, keep) {
         size = 12,
         text = ~ paste("Gene:", Feature),
         type = "scatter",
-        mode = "markers"
+        mode = "markers",
+        colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple4", "none" = "grey40")
       ) |> 
-        layout(
+        plotly::layout(
           title = "Meta-Volcano", 
           xaxis = list(title = "logFC"),
           yaxis = list(title = "-log10(PValue)")
-      )|>
-      event_register("plotly_selected")
+      ) |>
+      event_register("plotly_selected") |> 
+      toWebGL()
     })
     
     # Show results in table
-    output$table <- renderDataTable({
+    output$table <- render_gt({
       d <- event_data("plotly_selected")
       df <- results()
       if (!is.null(d)) {
-        df2 <- df[Feature %chin% d$customdata, ]
-        return(df2)
+        df <- df[Feature %chin% d$customdata]
       }
-      df
+      
+      df |> 
+        gt() |> 
+        fmt_number(columns = c(Rep.logFC), decimals = 2) |> 
+        tab_header(
+          title = gt::md("**Meta-Significant Features**")
+        ) 
+        opt_interactive(use_compact_mode = TRUE)
     })
   })
 }
