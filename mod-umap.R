@@ -36,7 +36,7 @@ plotUmap <- function(df, col) {
     type = "scatter",
     mode = "markers"
   ) |>
-    layout(
+    plotly::layout(
       shapes = list(hline(), vline()),
       dragmode = "lasso",
       xaxis = list(title = "UMAP 1"),
@@ -84,7 +84,8 @@ umapUI <- function(id) {
         label = "Run UMAP",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      width = 3
     ),
     mainPanel(
       dropdownButton(
@@ -106,7 +107,7 @@ umapUI <- function(id) {
       ),
       verbatimTextOutput(NS(id, "test")),
       plotlyOutput(NS(id, "umap")),
-      dataTableOutput(NS(id, "table"))
+      gt_output(NS(id, "table"))
     )
   )
 }
@@ -134,29 +135,47 @@ umapServer <- function(id, pcaobj) {
     output$umap <- renderPlotly({
       u <- plotUmap(udata(), col = input$col)
       if (isTRUE(input$legend)) {
-        u |> layout(showlegend = TRUE)
+        u |> plotly::layout(showlegend = TRUE)
       } else {
         u
       }
     })
 
-    # Selected data for the table
-    keep_cols <- c(
-      "experiment", "contrast", "tissue", "cell_line", "disease",
-      "epigenetic_class"
-    )
-    new_names <- c(
-      "BioProject", "Contrast", "Tissue", "Cell Line", "Disease",
-      "Epigenetic Class"
-    )
-    output$table <- renderDataTable({
+    output$table <- render_gt({
       d <- event_data("plotly_selected")
-      df <- udata()
+      df <- pcaobj()$metadata
       if (!is.null(d)) {
-        df2 <- df[d$customdata, keep_cols]
-        rownames(df2) <- NULL
-        df2
+        df <- df[d$customdata, ]
       }
+      
+      df |> 
+        gt() |> 
+        cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
+        cols_move(c(tissue, disease), c(cell_line)) |> 
+        cols_label(
+          .list = c(
+            "id" = "ID",
+            "experiment" = "BioProject ID",
+            "contrast" = "Contrast",
+            "cell_line" = "Cell Line",
+            "drug" = "Drug",
+            "dose" = "Dose",
+            "time_hr" = "Time (hr)",
+            "desc" = "Description",
+            "epigenetic_class" = "Epigenetic Class",
+            "tissue" = "Tissue",
+            "disease" = "Disease"
+          )
+        ) |> 
+        cols_width(
+          desc ~ px(450),
+          contrast ~ px(300),
+          experiment ~ px(150)
+        ) |> 
+        tab_header(
+          title = gt::md("**Selected UMAP Data**")
+        ) |> 
+        opt_interactive(use_compact_mode = TRUE)
     })
   })
 }

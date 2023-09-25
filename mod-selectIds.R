@@ -30,10 +30,11 @@ selectIdUI <- function(id, choice_list) {
       pick(id, "drug", "Drug(s)", choice_list),
       pick(id, "epigenetic_class", "Drug Class(es)", choice_list),
       pick(id, "tissue", "Tissue(s)", choice_list),
-      pick(id, "disease", "Disease(s)", choice_list)
+      pick(id, "disease", "Disease(s)", choice_list),
+      width = 3
     ),
     mainPanel(
-      dataTableOutput(NS(id, "table"))
+      gt::gt_output(NS(id, "table"))
     )
   )
 }
@@ -53,21 +54,35 @@ selectIdServer <- function(id, se) {
           disease %in% input$disease
       )
     })
-    output$table <- renderDataTable({
-      datatable(
-        selected(),
-        rownames = FALSE,
-        colnames = c(
-          "ID" = "id", "BioProject" = "experiment",
-          "Contrast" = "contrast", "Cell Line" = "cell_line",
-          "Drug" = "drug", "Dose" = "dose", "Time (hr)" = "time_hr",
-          "Batch" = "batch", "Mutation" = "mutation",
-          "Comment" = "comment", "Description" = "desc",
-          "Epigenetic Class" = "epigenetic_class",
-          "Tissue" = "tissue", "Disease" = "disease"
-        ),
-        options = list(autoWidth = TRUE)
-      )
+    output$table <- gt::render_gt({
+      selected() |> 
+        gt() |> 
+        cols_hide(columns = c(id, batch, mutation, comment)) |>
+        cols_move(c(tissue, disease), c(cell_line)) |> 
+        cols_label(
+          .list = c(
+            "id" = "ID",
+            "experiment" = "BioProject ID",
+            "contrast" = "Contrast",
+            "cell_line" = "Cell Line",
+            "drug" = "Drug",
+            "dose" = "Dose",
+            "time_hr" = "Time (hr)",
+            "desc" = "Description",
+            "epigenetic_class" = "Epigenetic Class",
+            "tissue" = "Tissue",
+            "disease" = "Disease"
+          )
+        ) |> 
+        cols_width(
+          desc ~ px(450),
+          contrast ~ px(300),
+          experiment ~ px(150)
+        ) |> 
+        tab_header(
+          title = gt::md("**Selected Data for Meta-Analysis**")
+        ) |> 
+        opt_interactive(use_compact_mode = TRUE)
     })
 
     # Return the selected IDs

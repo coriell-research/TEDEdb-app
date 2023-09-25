@@ -76,7 +76,7 @@ plotBiplot <- function(obj, x, y, col) {
     type = "scatter",
     mode = "markers"
   ) |>
-    layout(
+    plotly::layout(
       shapes = list(hline(), vline()),
       dragmode = "lasso",
       xaxis = list(title = paste(x)),
@@ -157,7 +157,8 @@ pcaUI <- function(id) {
         label = "Run PCA",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      width = 3
     ),
     mainPanel(
       dropdownButton(
@@ -190,7 +191,7 @@ pcaUI <- function(id) {
         icon = icon("gear")
       ),
       plotlyOutput(NS(id, "biplot")),
-      dataTableOutput(NS(id, "table"))
+      gt_output(NS(id, "table"))
     )
   )
 }
@@ -218,29 +219,47 @@ pcaServer <- function(id, se, keep) {
     output$biplot <- renderPlotly({
       b <- plotBiplot(pcaobj(), x = input$x, y = input$y, col = input$col)
       if (isTRUE(input$legend)) {
-        b |> layout(showlegend = TRUE)
+        b |> plotly::layout(showlegend = TRUE)
       } else {
         b
       }
     })
 
-    # Do not plot all PC data - only selected columns and rename in final table
-    keep_cols <- c(
-      "experiment", "contrast", "tissue", "cell_line", "disease",
-      "epigenetic_class"
-    )
-    new_names <- c(
-      "BioProject", "Contrast", "Tissue", "Cell Line", "Disease",
-      "Epigenetic Class"
-    )
-    output$table <- renderDataTable({
+    output$table <- render_gt({
       d <- event_data("plotly_selected")
       df <- pcaobj()$metadata
       if (!is.null(d)) {
-        df2 <- df[d$customdata, keep_cols]
-        rownames(df2) <- NULL
-        df2
+        df <- df[d$customdata, ]
       }
+      
+      df |> 
+        gt() |> 
+        cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
+        cols_move(c(tissue, disease), c(cell_line)) |> 
+        cols_label(
+            .list = c(
+              "id" = "ID",
+              "experiment" = "BioProject ID",
+              "contrast" = "Contrast",
+              "cell_line" = "Cell Line",
+              "drug" = "Drug",
+              "dose" = "Dose",
+              "time_hr" = "Time (hr)",
+              "desc" = "Description",
+              "epigenetic_class" = "Epigenetic Class",
+              "tissue" = "Tissue",
+              "disease" = "Disease"
+            )
+          ) |> 
+          cols_width(
+            desc ~ px(450),
+            contrast ~ px(300),
+            experiment ~ px(150)
+          ) |> 
+          tab_header(
+            title = gt::md("**Selected PC Data**")
+          ) |> 
+          opt_interactive(use_compact_mode = TRUE)
     })
     pcaobj
   })
