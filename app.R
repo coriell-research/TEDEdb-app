@@ -13,6 +13,8 @@ source("mod-selectIds.R")
 source("mod-pca.R")
 source("mod-umap.R")
 source("mod-metaAnalysis.R")
+source("mod-ranking.R")
+source("mod-de.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
@@ -44,10 +46,16 @@ ui <- navbarPage(
         "4. Meta-Combine",
         metaUI("meta")
         ),
-      tabPanel("5. Ranked Expression")
+      tabPanel(
+        "5. Ranked Expression",
+        rankUI("rank")
+        )
     )
   ),
-  tabPanel("Differential Expression"),
+  tabPanel(
+    "Differential Expression",
+    deUI("de", choices)
+  ),
   tabPanel("GSEA"),
   tabPanel("Over-representation"),
   tabPanel("Sample vs. Sample"),
@@ -62,7 +70,8 @@ server <- function(input, output, session) {
   pcaobj <- pcaServer("pca", se, selected)
   umapServer("umap", pcaobj)
   metaServer("meta", se, selected)
-  
+  rankServer("rank", se, selected)
+  deServer("de", se)
 }
 
 shinyApp(ui, server)
