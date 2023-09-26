@@ -15,11 +15,13 @@ source("mod-umap.R")
 source("mod-metaAnalysis.R")
 source("mod-ranking.R")
 source("mod-de.R")
+source("mod-gsea.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
 se <- readRDS("data/se.rds")
-
+pathways <- readRDS("data/pathways.rds")
+pathway_names <- unname(unlist(lapply(pathways, names)))
 
 # App ---------------------------------------------------------------------
 
@@ -56,7 +58,10 @@ ui <- navbarPage(
     "Differential Expression",
     deUI("de", choices)
   ),
-  tabPanel("GSEA"),
+  tabPanel(
+    "GSEA",
+    gseaUI("gsea", choices, pathway_names)
+  ),
   tabPanel("Over-representation"),
   tabPanel("Sample vs. Sample"),
   tabPanel(
@@ -72,6 +77,7 @@ server <- function(input, output, session) {
   metaServer("meta", se, selected)
   rankServer("rank", se, selected)
   deServer("de", se)
+  gseaServer("gsea", se, pathways)
 }
 
 shinyApp(ui, server)
