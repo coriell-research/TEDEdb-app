@@ -6,6 +6,7 @@
 rankUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       awesomeRadio(
         NS(id, "features"),
         label = "Select features",
@@ -32,8 +33,7 @@ rankUI <- function(id) {
         min = 0,
         max = Inf,
         step = 0.5
-      ),
-      width = 3
+      )
     ),
     mainPanel(
       gt_output(NS(id, "table"))

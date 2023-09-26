@@ -90,6 +90,7 @@ plotBiplot <- function(obj, x, y, col) {
 pcaUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       awesomeRadio(
         NS(id, "features"),
         label = "Select features",
@@ -157,8 +158,7 @@ pcaUI <- function(id) {
         label = "Run PCA",
         style = "material-flat",
         color = "danger"
-      ),
-      width = 3
+      )
     ),
     mainPanel(
       dropdownButton(

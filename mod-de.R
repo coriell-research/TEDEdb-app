@@ -7,6 +7,7 @@
 deUI <- function(id, choice_list) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       awesomeRadio(
         NS(id, "features"),
         label = "Select features",

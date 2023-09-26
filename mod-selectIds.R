@@ -25,13 +25,13 @@ pick <- function(id, uid, ulabel, choice_list, multi = TRUE, size = 10,
 selectIdUI <- function(id, choice_list) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       pick(id, "experiment", "Experiment(s)", choice_list),
       pick(id, "cell_line", "Cell Line(s)", choice_list),
       pick(id, "drug", "Drug(s)", choice_list),
       pick(id, "epigenetic_class", "Drug Class(es)", choice_list),
       pick(id, "tissue", "Tissue(s)", choice_list),
-      pick(id, "disease", "Disease(s)", choice_list),
-      width = 3
+      pick(id, "disease", "Disease(s)", choice_list)
     ),
     mainPanel(
       gt::gt_output(NS(id, "table"))

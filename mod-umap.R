@@ -49,6 +49,7 @@ plotUmap <- function(df, col) {
 umapUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       numericInput(
         NS(id, "neighbors"),
         "N neighbors",
@@ -84,8 +85,7 @@ umapUI <- function(id) {
         label = "Run UMAP",
         style = "material-flat",
         color = "danger"
-      ),
-      width = 3
+      )
     ),
     mainPanel(
       dropdownButton(

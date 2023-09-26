@@ -6,6 +6,7 @@
 metaUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       pickerInput(
         NS(id, "method"),
         label = "Combination Method",
@@ -42,8 +43,7 @@ metaUI <- function(id) {
         label = "Run Meta-Analysis",
         style = "material-flat",
         color = "danger"
-      ),
-      width = 3
+      )
     ),
     mainPanel(
       dropdownButton(
