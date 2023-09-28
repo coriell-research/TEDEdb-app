@@ -8,6 +8,9 @@ suppressPackageStartupMessages(library(gt))
 suppressPackageStartupMessages(library(SummarizedExperiment))
 suppressPackageStartupMessages(library(PCAtools))
 suppressPackageStartupMessages(library(BiocSingular))
+suppressPackageStartupMessages(library(fgsea))
+# suppressPackageStartupMessages(library(clusterProfiler))
+# suppressPackageStartupMessages(library(org.Hs.eg.db))
 
 # Load modules
 source("mod-selectIds.R")
@@ -17,6 +20,7 @@ source("mod-metaAnalysis.R")
 source("mod-ranking.R")
 source("mod-de.R")
 source("mod-gsea.R")
+source("mod-overrep.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
@@ -64,7 +68,10 @@ ui <- navbarPage(
     "GSEA",
     gseaUI("gsea", choices, pathway_dt[, Name])
   ),
-  tabPanel("Over-representation"),
+  tabPanel(
+    "Over-representation",
+    overrepUI("overrep", choices)
+    ),
   tabPanel("Sample vs. Sample"),
   tabPanel(
     "About",
@@ -80,6 +87,7 @@ server <- function(input, output, session) {
   rankServer("rank", se, selected)
   deServer("de", se)
   gseaServer("gsea", se, pathways, pathway_dt)
+  overrepServer("overrep", se)
 }
 
 shinyApp(ui, server)
