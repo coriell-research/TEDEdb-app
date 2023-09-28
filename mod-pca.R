@@ -1,42 +1,8 @@
 ## Perform PCA on the selected sample IDs
 ##
 ## PCA result object is returned and passed to the UMAP module
+##
 ## ----------------------------------------------------------------------------
-
-# Function for performing PCA
-performPCA <- function(se, keep_cols, features, dataset, algorithm, center, scale,
-                       rank, removeVar) {
-  keep_rows <- switch(features,
-    gene = rowData(se)$feature_type == "Gene",
-    TE = rowData(se)$feature_type == "TE",
-    both = rep(TRUE, nrow(se))
-  )
-
-  filtered <- se[keep_rows, keep_cols]
-  df <- data.frame(colData(filtered))
-  M <- switch(dataset,
-    lfc = assay(filtered, "lfc"),
-    fdr = assay(filtered, "fdr"),
-    stat = assay(filtered, "stat"),
-    lcpm = assay(filtered, "lcpm")
-  )
-  algo <- switch(algorithm,
-    fast = FastAutoParam(),
-    irlba = IrlbaParam(),
-    random = RandomParam(),
-    exact = ExactParam()
-  )
-
-  PCAtools::pca(
-    M,
-    metadata = df,
-    center = center,
-    scale = scale,
-    rank = min(rank, ncol(M)),
-    removeVar = removeVar,
-    BSPARAM = algo
-  )
-}
 
 # Function for plotting PCA results with plotly
 plotBiplot <- function(obj, x, y, col) {
@@ -127,10 +93,18 @@ pcaUI <- function(id) {
         status = "success",
         animation = "rotate"
       ),
+      prettyCheckbox(
+        NS(id, "complete"),
+        label = "Use complete cases?",
+        value = FALSE,
+        icon = icon("check"),
+        status = "success",
+        animation = "rotate"
+      ),
       numericInput(
         NS(id, "rank"),
         label = "Number of components",
-        value = 10,
+        value = 30,
         min = 3,
         max = Inf,
         step = 1
@@ -139,7 +113,7 @@ pcaUI <- function(id) {
         NS(id, "removeVar"),
         label = "Remove proportion low variance features",
         value = 0.2,
-        min = 0,
+        min = 0.001,
         max = 1,
         step = 0.1
       ),
@@ -205,14 +179,51 @@ pcaServer <- function(id, se, keep) {
         type = "message", duration = NULL,
         closeButton = FALSE
       )
-      pcdata <- performPCA(
-        se, keep(), input$features,
-        input$dataset, input$algorithm,
-        input$center, input$scale,
-        input$rank, input$removeVar
+      keep_rows <- switch(input$features,
+                          gene = rowData(se)$feature_type == "Gene",
+                          TE = rowData(se)$feature_type == "TE",
+                          both = rep(TRUE, nrow(se))
+      )
+      
+      filtered <- se[keep_rows, keep()]
+      df <- data.frame(colData(filtered))
+      M <- switch(input$dataset,
+                  lfc = assay(filtered, "lfc"),
+                  fdr = assay(filtered, "fdr"),
+                  stat = assay(filtered, "stat"),
+                  lcpm = assay(filtered, "lcpm")
+      )
+      
+      if (isTRUE(input$complete)) {
+        M <- na.omit(M)
+      } else {
+        val <- switch (input$dataset,
+                       lfc = 0,
+                       fdr = 1,
+                       stat = 0,
+                       lcpm = 0
+        )
+        M[is.na(M)] <- val
+      }
+      
+      algo <- switch(input$algorithm,
+                     fast = FastAutoParam(),
+                     irlba = IrlbaParam(),
+                     random = RandomParam(),
+                     exact = ExactParam()
+      )
+      
+      pca_obj <- PCAtools::pca(
+        M,
+        metadata = df,
+        center = input$center,
+        scale = input$scale,
+        rank = min(c(input$rank, ncol(M), nrow(M))),
+        removeVar = input$removeVar,
+        BSPARAM = algo
       )
       removeNotification(msg)
-      pcdata
+      pca_obj
     }) |> bindEvent(input$run)
 
     # Display a biplot of the PCA results
