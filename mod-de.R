@@ -34,7 +34,7 @@ deUI <- function(id, choice_list) {
       numericInput(
         NS(id, "fdr"), 
         label = "FDR Cutoff", 
-        value = 0.1,
+        value = 0.05,
         min = 0,
         max = 1,
         step = 0.01
