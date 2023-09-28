@@ -91,15 +91,15 @@ gseaUI <- function(id, choice_list, pathway_names) {
     ),
     mainPanel(
       dropdownButton(
-        tags$h3("GSEA parameters:"),
+        tags$h3("GSEA Plot:"),
         pickerInput(
           NS(id, "geneset"),
-          label = "Gene Set",
+          label = "Select gene set to plot",
           choices = pathway_names,
           selected = "HALLMARK_APOPTOSIS",
           multiple = FALSE,
           options = list(
-            title = "Select Gene Set",
+            title = "Select pathway",
             size = 10,
             `live-search` = TRUE,
             `actions-box` = TRUE,
@@ -115,7 +115,7 @@ gseaUI <- function(id, choice_list, pathway_names) {
   )
 }
 
-gseaServer <- function(id, se, pathways) {
+gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
       msg <- showNotification("Performing GSEA. Please wait...",
@@ -126,6 +126,7 @@ gseaServer <- function(id, se, pathways) {
       filtered <- se[rowData(se)$feature_type == "Gene", ]
       t_stats <- assay(filtered, "stat")[, input$ID]
       names(t_stats) <- rownames(filtered)
+      t_stats <- t_stats[!is.na(t_stats)]
       
       # Run FGSEA
       res <- fgsea::fgsea(
@@ -144,8 +145,9 @@ gseaServer <- function(id, se, pathways) {
     
     # Enrichment Plot
     output$plot <- renderPlot({
+      p <- pathway_dt[Name == input$geneset, Pathway]
       fgsea::plotEnrichment(
-        pathway = pathways[[input$pathway]][[input$geneset]],
+        pathway = pathways[[p]][[input$geneset]],
         stats = data()[["stats"]]) + 
         ggplot2::ggtitle(input$geneset) +
         ggplot2::geom_line(linewidth = 2, color = "orange3") +
