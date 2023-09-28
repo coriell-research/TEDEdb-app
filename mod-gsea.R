@@ -96,7 +96,7 @@ gseaUI <- function(id, choice_list, pathway_names) {
           NS(id, "geneset"),
           label = "Select gene set to plot",
           choices = pathway_names,
-          selected = "HALLMARK_APOPTOSIS",
+          selected = NULL,
           multiple = FALSE,
           options = list(
             title = "Select pathway",
@@ -138,6 +138,9 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         scoreType = input$score
       )
       res <- res[order(padj)]
+      
+      # Make the GSEA plot from the top result
+      updatePickerInput(session, "geneset", selected = res[1, pathway])
 
       removeNotification(msg)
       return(list(results = res, stats = t_stats))
@@ -145,7 +148,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
     
     # Enrichment Plot
     output$plot <- renderPlot({
-      p <- pathway_dt[Name == input$geneset, Pathway]
+      p <- pathway_dt[input$geneset, Pathway]
       fgsea::plotEnrichment(
         pathway = pathways[[p]][[input$geneset]],
         stats = data()[["stats"]]) + 
