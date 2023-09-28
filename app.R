@@ -2,6 +2,7 @@ suppressPackageStartupMessages(library(shiny))
 suppressPackageStartupMessages(library(shinythemes))
 suppressPackageStartupMessages(library(shinyWidgets))
 suppressPackageStartupMessages(library(coriell))
+suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(plotly))
 suppressPackageStartupMessages(library(gt))
 suppressPackageStartupMessages(library(SummarizedExperiment))
@@ -21,7 +22,8 @@ source("mod-gsea.R")
 choices <- readRDS("data/select-inputs.rds")
 se <- readRDS("data/se.rds")
 pathways <- readRDS("data/pathways.rds")
-pathway_names <- unname(unlist(lapply(pathways, names)))
+pathway_dt <- readRDS("data/pathway_dt.rds")
+setkey(pathway_dt, Name)
 
 # App ---------------------------------------------------------------------
 
@@ -60,7 +62,7 @@ ui <- navbarPage(
   ),
   tabPanel(
     "GSEA",
-    gseaUI("gsea", choices, pathway_names)
+    gseaUI("gsea", choices, pathway_dt[, Name])
   ),
   tabPanel("Over-representation"),
   tabPanel("Sample vs. Sample"),
@@ -77,7 +79,7 @@ server <- function(input, output, session) {
   metaServer("meta", se, selected)
   rankServer("rank", se, selected)
   deServer("de", se)
-  gseaServer("gsea", se, pathways)
+  gseaServer("gsea", se, pathways, pathway_dt)
 }
 
 shinyApp(ui, server)
