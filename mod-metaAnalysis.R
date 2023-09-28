@@ -126,7 +126,8 @@ metaServer <- function(id, se, keep) {
         plotly::layout(
           title = "Meta-Volcano", 
           xaxis = list(title = "logFC"),
-          yaxis = list(title = "-log10(PValue)")
+          yaxis = list(title = "-log10(PValue)"),
+          dragmode = "lasso"
       ) |>
       event_register("plotly_selected") |> 
       toWebGL()
