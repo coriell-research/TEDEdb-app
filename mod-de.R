@@ -72,7 +72,7 @@ deServer <- function(id, se) {
       keep_col <- input$ID
       filtered <- se[keep_rows, keep_col]
       
-      data.frame(
+      dt <- data.table(
         feature_id = rownames(filtered),
         FDR = assay(filtered, "fdr")[, 1],
         logFC = assay(filtered, "lfc")[, 1],
@@ -80,6 +80,7 @@ deServer <- function(id, se) {
         `t` = assay(filtered, "stat")[, 1],
         SE = assay(filtered, "stderr")[, 1]
       )
+      na.omit(dt)
     })
     
     output$volcano <- renderPlot({
@@ -95,7 +96,7 @@ deServer <- function(id, se) {
         coriell::theme_coriell()
       })
     output$table <- render_gt({ 
-      data()[order(data()$FDR), ] |> 
+      data()[order(FDR)] |> 
         gt() |> 
         tab_header(
           title = gt::md("**Differential Expression Results**")
