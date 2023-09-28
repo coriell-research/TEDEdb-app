@@ -58,15 +58,15 @@ rankServer <- function(id, se, keep) {
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
       down_m <- lfc_m < input$lfc & fdr_m < input$fdr
       
-      df <- data.frame(
-        Significant = colSums(up_m + down_m),
-        N_up = colSums(up_m),
-        N_down = colSums(down_m)
+      dt <- data.table(
+        Significant = colSums(up_m + down_m, na.rm = TRUE),
+        N_up = colSums(up_m, na.rm = TRUE),
+        N_down = colSums(down_m, na.rm = TRUE)
       )
-      df <- cbind(df, data.frame(colData(filtered)))
-      df <- df[order(df$Significant, decreasing = TRUE), ]
+      dt <- setDT(cbind(dt, data.frame(colData(filtered))))
+      dt <- dt[order(Significant, decreasing = TRUE)]
       
-      df |> 
+      dt |> 
         gt() |> 
         cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
         cols_move(c(tissue, disease), c(cell_line)) |> 
