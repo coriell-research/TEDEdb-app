@@ -40,10 +40,10 @@ deUI <- function(id, choice_list) {
         step = 0.01
         ),
       numericInput(
-        NS(id, "lfc"),
-        label = "logFC Cutoff",
-        value = 0,
-        min = 0,
+        NS(id, "fc"),
+        label = "Fold-change Cutoff",
+        value = 1.2,
+        min = 1,
         max = Inf,
         step = 1
         )
@@ -85,13 +85,13 @@ deServer <- function(id, se) {
     
     output$volcano <- renderPlot({
       ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_volcano(data(), fdr = input$fdr, lfc = input$lfc) +
+      coriell::plot_volcano(data(), fdr = input$fdr, lfc = log2(input$fc)) +
         ggplot2::ggtitle(ptitle) +
         coriell::theme_coriell()
       })
     output$ma <- renderPlot({
       ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_md(data(), fdr = input$fdr, lfc = input$lfc) +
+      coriell::plot_md(data(), fdr = input$fdr, lfc = log2(input$fc)) +
         ggplot2::ggtitle(ptitle) +
         coriell::theme_coriell()
       })
