@@ -151,9 +151,9 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       p <- pathway_dt[input$geneset, Pathway]
       fgsea::plotEnrichment(
         pathway = pathways[[p]][[input$geneset]],
-        stats = data()[["stats"]]) + 
+        stats = data()[["stats"]]
+        ) +
         ggplot2::ggtitle(input$geneset) +
-        ggplot2::geom_line(linewidth = 2, color = "orange3") +
         coriell::theme_coriell()
     })
     
