@@ -12,6 +12,7 @@ suppressPackageStartupMessages(library(BiocSingular))
 suppressPackageStartupMessages(library(fgsea))
 suppressPackageStartupMessages(library(clusterProfiler))
 suppressPackageStartupMessages(library(org.Hs.eg.db))
+suppressPackageStartupMessages(library(ComplexHeatmap))
 
 # Load modules
 source("mod-selectIds.R")
@@ -22,6 +23,7 @@ source("mod-ranking.R")
 source("mod-de.R")
 source("mod-gsea.R")
 source("mod-overrep.R")
+source("mod-upset.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
@@ -73,7 +75,10 @@ ui <- navbarPage(
     "Over-representation",
     overrepUI("overrep", choices)
     ),
-  tabPanel("Sample vs. Sample"),
+  tabPanel(
+    "Sample vs. Sample",
+    upsetUI("upset", choices)
+    ),
   tabPanel(
     "About",
     htmltools::includeMarkdown("about.md")
@@ -89,6 +94,7 @@ server <- function(input, output, session) {
   deServer("de", se)
   gseaServer("gsea", se, pathways, pathway_dt)
   overrepServer("overrep", se)
+  upsetServer("upset", se)
 }
 
 shinyApp(ui, server)
