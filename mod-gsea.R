@@ -118,9 +118,12 @@ gseaUI <- function(id, choice_list, pathway_names) {
 gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
-      msg <- showNotification("Performing GSEA. Please wait...",
-                              type = "message", duration = FALSE,
-                              closeButton = FALSE)
+      show_alert(
+        title = "Processing GSEA",
+        text = "Please Wait...",
+        closeOnClickOutside = FALSE,
+        btn_labels = NA,
+      )
       
       # Subset for only genes
       filtered <- se[rowData(se)$feature_type == "Gene", ]
@@ -142,7 +145,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       # Make the GSEA plot from the top result
       updatePickerInput(session, "geneset", selected = res[1, pathway])
 
-      removeNotification(msg)
+      closeSweetAlert()
       return(list(results = res, stats = t_stats))
     }) |> bindEvent(input$run)
     

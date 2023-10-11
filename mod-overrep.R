@@ -149,9 +149,12 @@ overrepUI <- function(id, choice_list) {
 overrepServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
     results <- reactive({
-      msg <- showNotification("Performing GO-analysis. Please wait...",
-                              type = "message", duration = NULL,
-                              closeButton = FALSE)
+      show_alert(
+        title = "Processing Gene Ontology",
+        text = "Please Wait...",
+        closeOnClickOutside = FALSE,
+        btn_labels = NA,
+      )
       
       # Select sample data and remove NA measurements
       filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
@@ -193,7 +196,8 @@ overrepServer <- function(id, se) {
         pool = TRUE,
         readable = TRUE
       )
-      removeNotification(msg)
+      
+      closeSweetAlert()
       list("down" = ego_down, "up" = ego_up)
     }) |> bindEvent(input$run)
     

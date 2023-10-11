@@ -116,10 +116,13 @@ umapServer <- function(id, pcaobj) {
   moduleServer(id, function(input, output, session) {
     # Perform umap with selected parameters
     udata <- reactive({
-      msg <- showNotification("Performing UMAP. Please wait...",
-        type = "message", duration = FALSE,
-        closeButton = FALSE
+      show_alert(
+        title = "Processing UMAP",
+        text = "Please Wait...",
+        closeOnClickOutside = FALSE,
+        btn_labels = NA,
       )
+      
       u <- coriell::UMAP(
         pcaobj(),
         n_neighbors = input$neighbors,
@@ -127,7 +130,8 @@ umapServer <- function(id, pcaobj) {
         min_dist = input$mindist,
         n_epochs = input$epochs
       )
-      removeNotification(msg)
+      
+      closeSweetAlert()
       return(u)
     }) |> bindEvent(input$run)
 

@@ -175,10 +175,13 @@ pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
     # Perform PCA on 'Run'
     pcaobj <- reactive({
-      msg <- showNotification("Performing PCA. Please wait...",
-        type = "message", duration = NULL,
-        closeButton = FALSE
+      show_alert(
+        title = "Processing PCA",
+        text = "Please Wait...",
+        closeOnClickOutside = FALSE,
+        btn_labels = NA,
       )
+      
       keep_rows <- switch(input$features,
                           gene = rowData(se)$feature_type == "Gene",
                           TE = rowData(se)$feature_type == "TE",
@@ -222,7 +225,8 @@ pcaServer <- function(id, se, keep) {
         removeVar = input$removeVar,
         BSPARAM = algo
       )
-      removeNotification(msg)
+      
+      closeSweetAlert()
       pca_obj
     }) |> bindEvent(input$run)
 

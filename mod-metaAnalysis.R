@@ -72,9 +72,11 @@ metaUI <- function(id) {
 metaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
     results <- reactive({
-      msg <- showNotification("Performing Meta-Analysis. Please wait...",
-                              type = "message", duration = NULL,
-                              closeButton = FALSE
+      show_alert(
+        title = "Processing Meta-Analysis",
+        text = "Please Wait...\nPlots make take additional time to render",
+        closeOnClickOutside = FALSE,
+        btn_labels = NA,
       )
       filtered <- se[, keep()]
       
@@ -105,12 +107,18 @@ metaServer <- function(id, se, keep) {
         res <- coriell::meta_de(filtered, method, fdr = selected_assay,
                                 lfc = "lfc")
       }
-      removeNotification(msg)
+      
+      closeSweetAlert()
       return(res)
     }) |> bindEvent(input$run)
     
     # Show the metavolcano
     output$metavolcano <- renderPlotly({
+      showNotification(
+        "Creating Meta-Volcano Plot...",
+        type = "message", duration = 10,
+        closeButton = TRUE
+      )
       plot_ly(
         data = results(),
         customdata = results()[, Feature],
