@@ -44,6 +44,11 @@ rankUI <- function(id) {
 rankServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) { 
     output$table <- render_gt({
+      showNotification(
+        "Collecting Rank Data...",
+        type = "message", duration = 10,
+        closeButton = TRUE
+      )
       keep_rows <- switch(input$features,
                           gene = rowData(se)$feature_type == "Gene",
                           TE = rowData(se)$feature_type == "TE",

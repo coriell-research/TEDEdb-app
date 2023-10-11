@@ -76,10 +76,12 @@ upsetUI <- function(id, choice_list) {
 upsetServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
     result <- reactive({
-      msg <- showNotification("Performing Overlap. Please wait...",
-                              type = "message", duration = NULL,
-                              closeButton = FALSE
+      msg <- showNotification(
+        "Performing Overlaps. Please wait...",
+        type = "message", duration = NULL,
+        closeButton = FALSE
       )
+      
       keep_rows <- switch(
         input$features,
         gene = rowData(se)$feature_type == "Gene",
