@@ -117,7 +117,7 @@ umapServer <- function(id, pcaobj) {
     # Perform umap with selected parameters
     udata <- reactive({
       show_alert(
-        title = "Processing UMAP",
+        title = "Performing UMAP",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
