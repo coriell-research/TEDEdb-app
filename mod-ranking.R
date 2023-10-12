@@ -46,7 +46,7 @@ rankServer <- function(id, se, keep) {
     output$table <- render_gt({
       showNotification(
         "Collecting Rank Data...",
-        type = "message", duration = 10,
+        type = "message", duration = 5,
         closeButton = TRUE
       )
       keep_rows <- switch(input$features,
