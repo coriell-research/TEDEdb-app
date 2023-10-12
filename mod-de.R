@@ -86,22 +86,24 @@ deServer <- function(id, se) {
     output$volcano <- renderPlot({
       showNotification(
         "Creating Volcano Plot...",
-        type = "message", duration = 10,
+        type = "message", duration = 5,
         closeButton = TRUE
       )
       ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_volcano(data(), fdr = input$fdr, lfc = log2(input$fc)) +
+      coriell::plot_volcano(data(), fdr = input$fdr, lfc = log2(input$fc), 
+                            up_shape = 16, down_shape = 16, nonde_shape = '.') +
         ggplot2::ggtitle(ptitle) +
         coriell::theme_coriell()
       })
     output$ma <- renderPlot({
       showNotification(
         "Creating MA Plot...",
-        type = "message", duration = 10,
+        type = "message", duration = 5,
         closeButton = TRUE
       )
       ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_md(data(), fdr = input$fdr, lfc = log2(input$fc)) +
+      coriell::plot_md(data(), fdr = input$fdr, lfc = log2(input$fc),
+                       up_shape = 16, down_shape = 16, nonde_shape = '.') +
         ggplot2::ggtitle(ptitle) +
         coriell::theme_coriell()
       })
