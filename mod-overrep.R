@@ -150,7 +150,7 @@ overrepServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
     results <- reactive({
       show_alert(
-        title = "Processing Gene Ontology",
+        title = "Performing Gene Ontology Analysis",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
