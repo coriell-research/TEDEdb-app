@@ -119,7 +119,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
       show_alert(
-        title = "Processing GSEA",
+        title = "Performing GSEA",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
