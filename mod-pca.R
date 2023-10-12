@@ -176,7 +176,7 @@ pcaServer <- function(id, se, keep) {
     # Perform PCA on 'Run'
     pcaobj <- reactive({
       show_alert(
-        title = "Processing PCA",
+        title = "Performing PCA",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
