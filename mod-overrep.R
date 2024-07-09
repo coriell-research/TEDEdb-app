@@ -171,6 +171,7 @@ overrepServer <- function(id, se) {
       # Perform over-representation analysis
       ego_up <- enrichGO(
         up_genes,
+        universe = rownames(fdr_m),
         OrgDb = org.Hs.eg.db,
         keyType = "SYMBOL",
         ont = input$ontology,
@@ -185,6 +186,7 @@ overrepServer <- function(id, se) {
       
       ego_down <- enrichGO(
         down_genes,
+        universe = rownames(fdr_m),
         OrgDb = org.Hs.eg.db,
         keyType = "SYMBOL",
         ont = input$ontology,
