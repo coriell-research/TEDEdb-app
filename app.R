@@ -13,6 +13,7 @@ suppressPackageStartupMessages(library(fgsea))
 suppressPackageStartupMessages(library(clusterProfiler))
 suppressPackageStartupMessages(library(org.Hs.eg.db))
 suppressPackageStartupMessages(library(ComplexHeatmap))
+suppressPackageStartupMessages(library(matrixStats))
 
 # Load modules
 source("mod-selectIds.R")
@@ -87,8 +88,8 @@ ui <- navbarPage(
 
 server <- function(input, output, session) {
   selected <- selectIdServer("ids", se)
-  pcaobj <- pcaServer("pca", se, selected)
-  umapServer("umap", pcaobj)
+  pcaServer("pca", se, selected)
+  umapServer("umap", se, selected)
   metaServer("meta", se, selected)
   rankServer("rank", se, selected)
   deServer("de", se)
