@@ -127,14 +127,14 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       
       # Subset for only genes
       filtered <- se[rowData(se)$feature_type == "Gene", ]
-      t_stats <- assay(filtered, "stat")[, input$ID]
-      names(t_stats) <- rownames(filtered)
-      t_stats <- t_stats[!is.na(t_stats)]
+      z_stats <- assay(filtered, "stat")[, input$ID]
+      names(z_stats) <- rownames(filtered)
+      z_stats <- z_stats[!is.na(z_stats)]
       
       # Run FGSEA
       res <- fgsea::fgsea(
         pathways = pathways[[input$pathway]],
-        stats = t_stats,
+        stats = z_stats,
         sampleSize = input$size,
         minSize = input$min,
         maxSize = input$max,
@@ -146,7 +146,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       updatePickerInput(session, "geneset", selected = res[1, pathway])
 
       closeSweetAlert()
-      return(list(results = res, stats = t_stats))
+      return(list(results = res, stats = z_stats))
     }) |> bindEvent(input$run)
     
     # Enrichment Plot
