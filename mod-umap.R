@@ -50,6 +50,61 @@ umapUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
+      awesomeRadio(
+        NS(id, "features"),
+        label = "Select features",
+        choices = c(
+          "Genes" = "gene", 
+          "Transposable Elements" = "TE",
+          "Both" = "both"
+        ),
+        selected = "gene",
+        inline = TRUE
+      ),
+      awesomeRadio(
+        NS(id, "dataset"),
+        label = "Select data",
+        choices = c(
+          "logFC" = "lfc", 
+          "FDR" = "fdr", 
+          "z-statistic" = "stat",
+          "Avg. logCPM" = "lcpm"
+        ),
+        selected = "lfc",
+        inline = TRUE
+      ),
+      prettyCheckbox(
+        NS(id, "center"),
+        label = "Center data",
+        value = TRUE,
+        icon = icon("check"),
+        status = "success",
+        animation = "rotate"
+      ),
+      prettyCheckbox(
+        NS(id, "scale"),
+        label = "Scale data",
+        value = TRUE,
+        icon = icon("check"),
+        status = "success",
+        animation = "rotate"
+      ),
+      prettyCheckbox(
+        NS(id, "complete"),
+        label = "Use complete cases?",
+        value = TRUE,
+        icon = icon("check"),
+        status = "success",
+        animation = "rotate"
+      ),
+      numericInput(
+        NS(id, "removeVar"),
+        label = "Remove proportion low variance features",
+        value = NA,
+        min = 0,
+        max = 1,
+        step = 0.1
+      ),
       numericInput(
         NS(id, "neighbors"),
         "N neighbors",
@@ -69,7 +124,7 @@ umapUI <- function(id) {
       numericInput(
         NS(id, "epochs"),
         "Iterations",
-        value = 200,
+        value = 100,
         min = 1,
         max = Inf,
         step = 100
@@ -112,10 +167,13 @@ umapUI <- function(id) {
   )
 }
 
-umapServer <- function(id, pcaobj) {
+umapServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    # Perform umap with selected parameters
+    
+    # Perform UMAP with selected parameters and data
+    # Perform PCA on 'Run'
     udata <- reactive({
+      
       show_alert(
         title = "Performing UMAP",
         text = "Please Wait...",
@@ -123,16 +181,71 @@ umapServer <- function(id, pcaobj) {
         btn_labels = NA,
       )
       
-      u <- coriell::UMAP(
-        pcaobj(),
-        n_neighbors = input$neighbors,
-        metric = input$metric,
-        min_dist = input$mindist,
-        n_epochs = input$epochs
+      keep_rows <- switch(
+        input$features,
+        gene = rowData(se)$feature_type == "Gene",
+        TE = rowData(se)$feature_type == "TE",
+        both = rep(TRUE, nrow(se))
       )
       
+      filtered <- se[keep_rows, keep()]
+      df <- data.frame(colData(filtered))
+      m <- switch(
+        input$dataset,
+        lfc = assay(filtered, "lfc"),
+        fdr = assay(filtered, "fdr"),
+        stat = assay(filtered, "stat"),
+        lcpm = assay(filtered, "lcpm")
+      )
+      
+      # Impute data if not using complete cases
+      if (isTRUE(input$complete)) {
+        m <- na.omit(m)
+      } else {
+        val <- switch(
+          input$dataset,
+          lfc = 0,
+          fdr = 1,
+          stat = 0,
+          lcpm = 0
+        )
+        m[is.na(m)] <- val
+      }
+      
+      # Remove low/zero-variance features
+      if (is.na(input$removeVar) || input$removeVar == 0) {
+        m <- m[rowVars(m) != 0, ]
+      } else {
+        m <- coriell::remove_var(m, input$removeVar)
+      }
+      
+      # Scale and center the data before computation - result is transposed
+      m <- as.matrix(scale(t(m), center = input$center, scale = input$scale))
+      
+      # Attempt UMAP calculation
+      result <- tryCatch({
+        coriell::UMAP(
+          m,
+          metadata = df,
+          n_neighbors = input$neighbors,
+          metric = input$metric,
+          min_dist = input$mindist,
+          n_epochs = input$epochs
+        )}, 
+        error = function(e) {
+          return(NULL)
+        },
+        warning = function(e) {
+          return(NULL)
+        })
+      
+      if (is.null(result)) {
+        closeSweetAlert()
+        validate("Computation failed! Adjust inputs and try again.")
+      }
+      
       closeSweetAlert()
-      return(u)
+      return(result)
     }) |> bindEvent(input$run)
 
     # UMAP plot
@@ -147,15 +260,15 @@ umapServer <- function(id, pcaobj) {
 
     output$table <- render_gt({
       d <- event_data("plotly_selected")
-      df <- pcaobj()$metadata
+      df <- udata()
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
-      
-      df |> 
-        gt() |> 
+
+      df |>
+        gt() |>
         cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
-        cols_move(c(tissue, disease), c(cell_line)) |> 
+        cols_move(c(tissue, disease), c(cell_line)) |>
         cols_label(
           .list = c(
             "id" = "ID",
@@ -170,15 +283,15 @@ umapServer <- function(id, pcaobj) {
             "tissue" = "Tissue",
             "disease" = "Disease"
           )
-        ) |> 
+        ) |>
         cols_width(
           desc ~ px(450),
           contrast ~ px(300),
           experiment ~ px(150)
-        ) |> 
+        ) |>
         tab_header(
           title = gt::md("**Selected UMAP Data**")
-        ) |> 
+        ) |>
         opt_interactive(use_compact_mode = TRUE)
     })
   })
