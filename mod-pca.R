@@ -9,6 +9,8 @@ plotBiplot <- function(obj, x, y, col) {
   # Extract components from the PCA object and bind intoa single data.frame
   data <- obj$rotated
   metadata <- obj$metadata
+  var_x <- round(obj$variance[x], 1)
+  var_y <- round(obj$variance[y], 1)
   d <- cbind(metadata, data)
 
   vline <- function(x = 0, color = "black") {
@@ -45,8 +47,8 @@ plotBiplot <- function(obj, x, y, col) {
     plotly::layout(
       shapes = list(hline(), vline()),
       dragmode = "lasso",
-      xaxis = list(title = paste(x)),
-      yaxis = list(title = paste(y)),
+      xaxis = list(title = paste0(x, " [", var_x, "%]")),
+      yaxis = list(title = paste0(y, " [", var_y, "%]")),
       showlegend = FALSE
     ) |>
     event_register("plotly_selected")
@@ -61,7 +63,8 @@ pcaUI <- function(id) {
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", "Transposable Elements" = "TE",
+          "Genes" = "gene", 
+          "Transposable Elements" = "TE",
           "Both" = "both"
         ),
         selected = "gene",
@@ -71,7 +74,9 @@ pcaUI <- function(id) {
         NS(id, "dataset"),
         label = "Select data",
         choices = c(
-          "logFC" = "lfc", "FDR" = "fdr", "T-statistic" = "stat",
+          "logFC" = "lfc", 
+          "FDR" = "fdr", 
+          "z-statistic" = "stat",
           "Avg. logCPM" = "lcpm"
         ),
         selected = "lfc",
@@ -96,7 +101,7 @@ pcaUI <- function(id) {
       prettyCheckbox(
         NS(id, "complete"),
         label = "Use complete cases?",
-        value = FALSE,
+        value = TRUE,
         icon = icon("check"),
         status = "success",
         animation = "rotate"
@@ -112,8 +117,8 @@ pcaUI <- function(id) {
       numericInput(
         NS(id, "removeVar"),
         label = "Remove proportion low variance features",
-        value = 0.2,
-        min = 0.001,
+        value = NA,
+        min = 0,
         max = 1,
         step = 0.1
       ),
@@ -173,8 +178,10 @@ pcaUI <- function(id) {
 # PCA server
 pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
+    
     # Perform PCA on 'Run'
     pcaobj <- reactive({
+      
       show_alert(
         title = "Performing PCA",
         text = "Please Wait...",
@@ -190,44 +197,65 @@ pcaServer <- function(id, se, keep) {
       
       filtered <- se[keep_rows, keep()]
       df <- data.frame(colData(filtered))
-      M <- switch(input$dataset,
-                  lfc = assay(filtered, "lfc"),
-                  fdr = assay(filtered, "fdr"),
-                  stat = assay(filtered, "stat"),
-                  lcpm = assay(filtered, "lcpm")
+      m <- switch(
+        input$dataset,
+        lfc = assay(filtered, "lfc"),
+        fdr = assay(filtered, "fdr"),
+        stat = assay(filtered, "stat"),
+        lcpm = assay(filtered, "lcpm")
       )
       
       if (isTRUE(input$complete)) {
-        M <- na.omit(M)
+        m <- na.omit(m)
       } else {
-        val <- switch (input$dataset,
-                       lfc = 0,
-                       fdr = 1,
-                       stat = 0,
-                       lcpm = 0
+        val <- switch(
+          input$dataset,
+          lfc = 0,
+          fdr = 1,
+          stat = 0,
+          lcpm = 0
         )
-        M[is.na(M)] <- val
+        m[is.na(m)] <- val
       }
       
-      algo <- switch(input$algorithm,
-                     fast = FastAutoParam(),
-                     irlba = IrlbaParam(),
-                     random = RandomParam(),
-                     exact = ExactParam()
+      algo <- switch(
+        input$algorithm,
+        fast = FastAutoParam(),
+        irlba = IrlbaParam(),
+        random = RandomParam(),
+        exact = ExactParam()
       )
       
-      pca_obj <- PCAtools::pca(
-        M,
-        metadata = df,
-        center = input$center,
-        scale = input$scale,
-        rank = min(c(input$rank, ncol(M), nrow(M))),
-        removeVar = input$removeVar,
-        BSPARAM = algo
-      )
+      # Remove low/zero-variance features
+      if (is.na(input$removeVar) || input$removeVar == 0) {
+        m <- m[rowVars(m) != 0, ]
+      } else {
+        m <- coriell::remove_var(m, input$removeVar)
+      }
+      
+      result <- tryCatch({
+        PCAtools::pca(
+          m,
+          metadata = df,
+          center = input$center,
+          scale = input$scale,
+          rank = min(c(input$rank, ncol(m), nrow(m))),
+          BSPARAM = algo
+        )}, 
+        error = function(e) {
+          return(NULL)
+        },
+        warning = function(e) {
+          return(NULL)
+        })
+      
+      if (is.null(result)) {
+        closeSweetAlert()
+        validate("Computation failed! Adjust inputs and try again.")
+      }
       
       closeSweetAlert()
-      pca_obj
+      return(result)
     }) |> bindEvent(input$run)
 
     # Display a biplot of the PCA results
@@ -276,6 +304,5 @@ pcaServer <- function(id, se, keep) {
           ) |> 
           opt_interactive(use_compact_mode = TRUE)
     })
-    pcaobj
   })
 }
