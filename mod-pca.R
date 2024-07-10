@@ -126,8 +126,10 @@ pcaUI <- function(id) {
         NS(id, "algorithm"),
         label = "PCA algorithm",
         choices = c(
-          "FastAuto" = "fast", "Irlba" = "irlba",
-          "Random" = "random", "Exact" = "exact"
+          "FastAuto" = "fast", 
+          "Irlba" = "irlba",
+          "Random" = "random", 
+          "Exact" = "exact"
         ),
         selected = "fast",
         multiple = FALSE
@@ -189,22 +191,25 @@ pcaServer <- function(id, se, keep) {
         btn_labels = NA,
       )
       
-      keep_rows <- switch(input$features,
-                          gene = rowData(se)$feature_type == "Gene",
-                          TE = rowData(se)$feature_type == "TE",
-                          both = rep(TRUE, nrow(se))
+      # Select the relevant data based on selected IDs and features
+      keep_rows <- switch(
+        input$features,
+        gene = rowData(se)$feature_type == "Gene",
+        TE = rowData(se)$feature_type == "TE",
+        both = rep(TRUE, nrow(se))
       )
       
       filtered <- se[keep_rows, keep()]
       df <- data.frame(colData(filtered))
       m <- switch(
         input$dataset,
-        lfc = assay(filtered, "lfc"),
-        fdr = assay(filtered, "fdr"),
-        stat = assay(filtered, "stat"),
-        lcpm = assay(filtered, "lcpm")
+        lfc = assay(filtered, "logFC"),
+        fdr = assay(filtered, "adj.P.Val"),
+        stat = assay(filtered, "z"),
+        lcpm = assay(filtered, "AveExpr")
       )
       
+      # Use only complete cases OR impute default values otherwise
       if (isTRUE(input$complete)) {
         m <- na.omit(m)
       } else {
@@ -218,6 +223,14 @@ pcaServer <- function(id, se, keep) {
         m[is.na(m)] <- val
       }
       
+      # Remove low/zero-variance features
+      if (is.na(input$removeVar) || input$removeVar == 0) {
+        m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
+      } else {
+        m <- coriell::remove_var(m, input$removeVar)
+      }
+      
+      # Select the PCA algoritm
       algo <- switch(
         input$algorithm,
         fast = FastAutoParam(),
@@ -226,13 +239,7 @@ pcaServer <- function(id, se, keep) {
         exact = ExactParam()
       )
       
-      # Remove low/zero-variance features
-      if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
-      } else {
-        m <- coriell::remove_var(m, input$removeVar)
-      }
-      
+      # Attempt PCA computation
       result <- tryCatch({
         PCAtools::pca(
           m,
