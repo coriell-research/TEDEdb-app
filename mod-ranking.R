@@ -46,18 +46,21 @@ rankServer <- function(id, se, keep) {
     output$table <- render_gt({
       showNotification(
         "Collecting Rank Data...",
-        type = "message", duration = 5,
+        type = "message", 
+        duration = 5,
         closeButton = TRUE
       )
-      keep_rows <- switch(input$features,
-                          gene = rowData(se)$feature_type == "Gene",
-                          TE = rowData(se)$feature_type == "TE",
-                          both = rep(TRUE, nrow(se))
+      
+      keep_rows <- switch(
+        input$features,
+        gene = rowData(se)$feature_type == "Gene",
+        TE = rowData(se)$feature_type == "TE",
+        both = rep(TRUE, nrow(se))
       )
       
       filtered <- se[keep_rows, keep()]
-      lfc_m <- assay(filtered, "lfc")
-      fdr_m <- assay(filtered, "fdr")
+      lfc_m <- assay(filtered, "logFC")
+      fdr_m <- assay(filtered, "adj.P.Val")
       
       # Calculate the up/down-regulated features
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
@@ -69,7 +72,7 @@ rankServer <- function(id, se, keep) {
         N_down = colSums(down_m, na.rm = TRUE)
       )
       dt <- setDT(cbind(dt, data.frame(colData(filtered))))
-      dt <- dt[order(Significant, decreasing = TRUE)]
+      setorder(dt, -Significant)
       
       dt |> 
         gt() |> 
