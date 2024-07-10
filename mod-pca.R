@@ -228,7 +228,7 @@ pcaServer <- function(id, se, keep) {
       
       # Remove low/zero-variance features
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[rowVars(m) != 0, ]
+        m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
       } else {
         m <- coriell::remove_var(m, input$removeVar)
       }
@@ -243,9 +243,11 @@ pcaServer <- function(id, se, keep) {
           BSPARAM = algo
         )}, 
         error = function(e) {
+          print(e)
           return(NULL)
         },
         warning = function(e) {
+          print(e)
           return(NULL)
         })
       

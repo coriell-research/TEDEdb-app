@@ -214,7 +214,7 @@ umapServer <- function(id, se, keep) {
       
       # Remove low/zero-variance features
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[rowVars(m) != 0, ]
+        m <- m[rowVars(m, useNames = FALSE) != 0, ]
       } else {
         m <- coriell::remove_var(m, input$removeVar)
       }
