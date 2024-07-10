@@ -181,6 +181,7 @@ umapServer <- function(id, se, keep) {
         btn_labels = NA,
       )
       
+      # Select relevant data and features
       keep_rows <- switch(
         input$features,
         gene = rowData(se)$feature_type == "Gene",
@@ -192,10 +193,10 @@ umapServer <- function(id, se, keep) {
       df <- data.frame(colData(filtered))
       m <- switch(
         input$dataset,
-        lfc = assay(filtered, "lfc"),
-        fdr = assay(filtered, "fdr"),
-        stat = assay(filtered, "stat"),
-        lcpm = assay(filtered, "lcpm")
+        lfc = assay(filtered, "logFC"),
+        fdr = assay(filtered, "adj.P.Val"),
+        stat = assay(filtered, "z"),
+        lcpm = assay(filtered, "AveExpr")
       )
       
       # Impute data if not using complete cases
@@ -214,7 +215,7 @@ umapServer <- function(id, se, keep) {
       
       # Remove low/zero-variance features
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[rowVars(m, useNames = FALSE) != 0, ]
+        m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
       } else {
         m <- coriell::remove_var(m, input$removeVar)
       }
