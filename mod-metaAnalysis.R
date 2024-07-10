@@ -74,38 +74,40 @@ metaServer <- function(id, se, keep) {
     results <- reactive({
       show_alert(
         title = "Processing Meta-Analysis",
-        text = "Please Wait...\nPlots make take additional time to render",
+        text = "Please Wait...\nPlots may take additional time to render",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
       )
       filtered <- se[, keep()]
       
-      selected_assay <- "fdr"
+      selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
-        SummarizedExperiment::assay(filtered, "logp") <- log1p(
-          SummarizedExperiment::assay(filtered, "fdr")
-          )
+        SummarizedExperiment::assay(filtered, "logp") <- log1p(SummarizedExperiment::assay(filtered, "P.Value"))
         selected_assay <- "logp"
       }
 
-      method <- switch(input$method,
-                       Berger = metapod::parallelBerger, 
-                       Fisher = metapod::parallelFisher, 
-                       HolmMin = metapod::parallelHolmMin, 
-                       Pearson = metapod::parallelPearson, 
-                       Simes = metapod::parallelSimes,
-                       Stouffer = metapod::parallelStouffer,
-                       Wilkinson = metapod::parallelWilkinson
+      method <- switch(
+        input$method,
+        Berger = metapod::parallelBerger, 
+        Fisher = metapod::parallelFisher, 
+        HolmMin = metapod::parallelHolmMin, 
+        Pearson = metapod::parallelPearson, 
+        Simes = metapod::parallelSimes,
+        Stouffer = metapod::parallelStouffer,
+        Wilkinson = metapod::parallelWilkinson
       )
       
       # Perform P-value combination 
       if (input$method %in% c("HolmMin", "Wilkinson")) {
-        res <- coriell::meta_de(filtered, method, fdr = selected_assay, 
-                                lfc = "lfc", min.prop = input$min_prop,
-                                min.n = input$min_n)
+        res <- coriell::meta_de(
+          filtered, 
+          method, 
+          fdr = selected_assay, 
+          min.prop = input$min_prop,
+          min.n = input$min_n
+          )
       } else {
-        res <- coriell::meta_de(filtered, method, fdr = selected_assay,
-                                lfc = "lfc")
+        res <- coriell::meta_de(filtered, method, fdr = selected_assay)
       }
       
       closeSweetAlert()
