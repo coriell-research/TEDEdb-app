@@ -74,11 +74,11 @@ deServer <- function(id, se) {
       
       dt <- data.table(
         feature_id = rownames(filtered),
-        FDR = assay(filtered, "fdr")[, 1],
-        logFC = assay(filtered, "lfc")[, 1],
-        logCPM = assay(filtered, "lcpm")[, 1],
-        `t` = assay(filtered, "stat")[, 1],
-        SE = assay(filtered, "stderr")[, 1]
+        FDR = assay(filtered, "adj.P.Val")[, 1],
+        logFC = assay(filtered, "logFC")[, 1],
+        logCPM = assay(filtered, "AveExpr")[, 1],
+        t =  assay(filtered, "t")[, 1],
+        z = assay(filtered, "z")[, 1]
       )
       na.omit(dt)
     })

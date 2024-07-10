@@ -24,8 +24,10 @@ overrepUI <- function(id, choice_list) {
         NS(id, "ontology"),
         label = "Ontology",
         choices = c(
-          "Biological Process" = "BP", "Molecular Function" = "MF",
-          "Cellular Component" = "CC", "All" = "ALL"
+          "Biological Process" = "BP", 
+          "Molecular Function" = "MF",
+          "Cellular Component" = "CC", 
+          "All" = "ALL"
         ),
         selected = "BP"
       ),
@@ -158,9 +160,9 @@ overrepServer <- function(id, se) {
       
       # Select sample data and remove NA measurements
       filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
-      fdr_m <- assay(filtered, "fdr")
+      fdr_m <- assay(filtered, "adj.P.Val")
       fdr_m <- na.omit(fdr_m)
-      lfc_m <- assay(filtered, "lfc")[rownames(fdr_m), ]
+      lfc_m <- assay(filtered, "logFC")[rownames(fdr_m), ]
       
       # Create vectors of up/down genes
       up <- as.vector(fdr_m < input$fdr & lfc_m > 0)

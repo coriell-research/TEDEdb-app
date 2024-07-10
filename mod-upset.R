@@ -91,8 +91,8 @@ upsetServer <- function(id, se) {
       
       # Extract the selected features
       filtered <- se[keep_rows, se$id %in% input$ids]
-      lfc_m <- assay(filtered, "lfc")
-      fdr_m <- assay(filtered, "fdr")
+      lfc_m <- assay(filtered, "logFC")
+      fdr_m <- assay(filtered, "adj.P.Val")
       
       # Calculate the up/down-regulated features across contrasts
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
