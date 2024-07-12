@@ -66,13 +66,27 @@ rankServer <- function(id, se, keep) {
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
       down_m <- lfc_m < input$lfc & fdr_m < input$fdr
       
+      # Assays contain NA values at same positions
+      total <- colSums(!is.na(lfc_m), na.rm = TRUE)
+      
+      # Collect DE results for all contrasts
       dt <- data.table(
-        Significant = colSums(up_m + down_m, na.rm = TRUE),
+        Total = total,
         N_up = colSums(up_m, na.rm = TRUE),
         N_down = colSums(down_m, na.rm = TRUE)
       )
+      
+      # Compute percentages
+      dt[, `:=`(N_non = Total - (N_up + N_down),
+                Pct_up = round(N_up / Total * 100, 1),
+                Pct_down = round(N_down / Total * 100, 1))][,
+                `:=`(Pct_non = round(N_non / Total * 100, 1),
+                     Total = NULL)]
+      
+      # Add on metadata columns and reorder by most dysregulated
       dt <- setDT(cbind(dt, data.frame(colData(filtered))))
-      setorder(dt, -Significant)
+      setorder(dt, Pct_non)
+      setcolorder(dt, c("experiment", "contrast", "Pct_up", "Pct_down", "Pct_non"))
       
       dt |> 
         gt() |> 
