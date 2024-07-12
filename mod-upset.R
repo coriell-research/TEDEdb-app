@@ -112,8 +112,26 @@ upsetServer <- function(id, se) {
       names(down_features) <- paste0(connames, ".down")
       l <- c(up_features, down_features)
       
+      result <- tryCatch({
+        make_comb_mat(l, mode = input$mode)
+        }, 
+        error = function(e) {
+          print(e)
+          return(NULL)
+        },
+        warning = function(e) {
+          print(e)
+          return(NULL)
+        })
+      
+      if (is.null(result)) {
+        closeSweetAlert()
+        validate("Something went wrong creating the combination matrix. Modify inputs and try again.")
+      }
+      
       removeNotification(msg)
-      return(make_comb_mat(l, mode = input$mode))
+      
+      return(result)
     }) |> bindEvent(input$run)
     
     output$plot <- renderPlot({
