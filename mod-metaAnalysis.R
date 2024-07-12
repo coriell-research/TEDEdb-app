@@ -43,7 +43,8 @@ metaUI <- function(id) {
         label = "Run Meta-Analysis",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       dropdownButton(
@@ -53,7 +54,7 @@ metaUI <- function(id) {
           label = "x",
           choices = c("Rep.logFC", "Median.logFC", "Mean.logFC", "Min.logFC", "Max.logFC"),
           selected = "Rep.logFC"
-          ),
+        ),
         selectInput(
           NS(id, "y"),
           label = "y",
@@ -62,16 +63,16 @@ metaUI <- function(id) {
         ),
         status = "danger",
         icon = icon("gear")
-        ),
+      ),
       plotlyOutput(NS(id, "metavolcano")),
       gt_output(NS(id, "table"))
-      )
+    )
   )
 }
 
 metaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    results <- reactive({
+    data <- reactive({
       show_alert(
         title = "Processing Meta-Analysis",
         text = "Please Wait...\nPlots may take additional time to render",
@@ -79,46 +80,46 @@ metaServer <- function(id, se, keep) {
         btn_labels = NA,
       )
       filtered <- se[, keep()]
-      
+
       selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
         SummarizedExperiment::assay(filtered, "logp") <- log(
           SummarizedExperiment::assay(filtered, "P.Value")
-          )
+        )
         selected_assay <- "logp"
       }
 
-      method <- switch(
-        input$method,
-        Berger = metapod::parallelBerger, 
-        Fisher = metapod::parallelFisher, 
-        HolmMin = metapod::parallelHolmMin, 
-        Pearson = metapod::parallelPearson, 
+      method <- switch(input$method,
+        Berger = metapod::parallelBerger,
+        Fisher = metapod::parallelFisher,
+        HolmMin = metapod::parallelHolmMin,
+        Pearson = metapod::parallelPearson,
         Simes = metapod::parallelSimes,
         Stouffer = metapod::parallelStouffer,
         Wilkinson = metapod::parallelWilkinson
       )
-      
+
       # Perform P-value combination
-      result <- tryCatch({
-        if (input$method %in% c("HolmMin", "Wilkinson")) {
-          res <- coriell::meta_de(
-            filtered, 
-            method, 
-            fdr = selected_assay, 
-            min.prop = input$min_prop,
-            min.n = input$min_n,
-            log.p = isTRUE(input$logp)
-          )
-        } else {
-          res <- coriell::meta_de(
-            filtered, 
-            method, 
-            fdr = selected_assay,
-            log.p = isTRUE(input$logp)
+      result <- tryCatch(
+        {
+          if (input$method %in% c("HolmMin", "Wilkinson")) {
+            res <- coriell::meta_de(
+              filtered,
+              method,
+              fdr = selected_assay,
+              min.prop = input$min_prop,
+              min.n = input$min_n,
+              log.p = isTRUE(input$logp)
+            )
+          } else {
+            res <- coriell::meta_de(
+              filtered,
+              method,
+              fdr = selected_assay,
+              log.p = isTRUE(input$logp)
             )
           }
-        }, 
+        },
         error = function(e) {
           print(e)
           return(NULL)
@@ -126,107 +127,124 @@ metaServer <- function(id, se, keep) {
         warning = function(e) {
           print(e)
           return(NULL)
-        })
-      
+        }
+      )
+
       if (is.null(result)) {
         closeSweetAlert()
         validate("Computation failed! Adjust inputs and try again.")
       }
-      
+
       # Rescale log-transformed results back to original scale
       if (isTRUE(input$logp)) {
         res[, Combined.Pval := exp(Combined.Pval)]
       }
-      
+
       # Drop values that could not be calculated
       before <- nrow(res)
       res <- res[!is.na(Combined.Pval)][order(Combined.Pval)]
       after <- nrow(res)
       showNotification(
-        paste("Removing", before-after, "observations where P-values could not be combined"),
-        type = "message", 
+        paste("Removing", before - after, "observations where P-values could not be combined"),
+        type = "message",
         duration = 10,
         closeButton = TRUE
       )
-      
+
       # Show this here after creating the results instead of running in reactive below
       showNotification(
         "Creating Meta-Volcano Plot...",
-        type = "message", 
+        type = "message",
         duration = 20,
         closeButton = TRUE
       )
-      
+
       closeSweetAlert()
       return(res)
     }) |> bindEvent(input$run)
-    
+
     # Show the metavolcano
     output$metavolcano <- renderPlotly({
-      
       plotly::plot_ly(
-        colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple2")) |> 
-      plotly::add_trace(
-        data = results()[Direction == "up"],
-        x = ~ get(input$x),
-        y = ~ -log10(get(input$y)),
-        color = ~ Direction,
-        text = ~ paste("Gene:", Feature),
-        customdata = results()[Direction == "up", Feature],
-        type = "scatter",
-        mode = "markers",
-        showlegend = TRUE,
-        visible = TRUE
-      ) |> 
-      plotly::add_trace(
-        data = results()[Direction == "down"],
-        x = ~ get(input$x),
-        y = ~ -log10(get(input$y)),
-        color = ~ Direction,
-        text = ~ paste("Gene:", Feature),
-        customdata = results()[Direction == "down", Feature],
-        type = "scatter",
-        mode = "markers",
-        showlegend = TRUE,
-        visible = TRUE
+        colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple2")
       ) |>
-      plotly::add_trace(
-        data = results()[Direction == "mixed"],
-        x = ~ get(input$x),
-        y = ~ -log10(get(input$y)),
-        color = ~ Direction,
-        text = ~ paste("Gene:", Feature),
-        customdata = results()[Direction == "mixed", Feature],
-        type = "scatter",
-        mode = "markers",
-        showlegend = TRUE,
-        visible = "legendonly"
+        plotly::add_trace(
+          data = data()[Direction == "up"],
+          x = ~ get(input$x),
+          y = ~ -log10(get(input$y)),
+          color = ~Direction,
+          text = ~ paste("Gene:", Feature),
+          customdata = data()[Direction == "up", Feature],
+          type = "scatter",
+          mode = "markers",
+          showlegend = TRUE,
+          visible = TRUE
         ) |>
-      plotly::layout(
-        title = "Meta-Volcano",
-        xaxis = list(title = "logFC"),
-        yaxis = list(title = "-log10(PValue)"),
-        dragmode = "lasso"
+        plotly::add_trace(
+          data = data()[Direction == "down"],
+          x = ~ get(input$x),
+          y = ~ -log10(get(input$y)),
+          color = ~Direction,
+          text = ~ paste("Gene:", Feature),
+          customdata = data()[Direction == "down", Feature],
+          type = "scatter",
+          mode = "markers",
+          showlegend = TRUE,
+          visible = TRUE
         ) |>
-      plotly::event_register("plotly_selected") |>
-      plotly::toWebGL()
+        plotly::add_trace(
+          data = data()[Direction == "mixed"],
+          x = ~ get(input$x),
+          y = ~ -log10(get(input$y)),
+          color = ~Direction,
+          text = ~ paste("Gene:", Feature),
+          customdata = data()[Direction == "mixed", Feature],
+          type = "scatter",
+          mode = "markers",
+          showlegend = TRUE,
+          visible = "legendonly"
+        ) |>
+        plotly::layout(
+          title = "Meta-Volcano",
+          xaxis = list(title = "logFC"),
+          yaxis = list(title = "-log10(PValue)"),
+          dragmode = "lasso"
+        ) |>
+        plotly::event_register("plotly_selected") |>
+        plotly::toWebGL()
     })
-    
+
     # Show results in table
     output$table <- render_gt({
       d <- event_data("plotly_selected")
-      df <- results()
+      df <- data()
       if (!is.null(d)) {
         df <- df[Feature %chin% d$customdata]
       }
-      
-      df |> 
-        gt() |> 
-        fmt_number(columns = c(Rep.logFC), decimals = 2) |> 
+
+      df |>
+        gt() |>
+        fmt_number(columns = c(Rep.logFC), decimals = 2) |>
         tab_header(
           title = gt::md("**Meta-Significant Features**")
-        ) |> 
+        ) |>
         opt_interactive(use_compact_mode = TRUE)
     })
+
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("meta-combine_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+
+        data_file <- data.table::fwrite(data(), "data.tsv", sep = "\t")
+        files <- c("data.tsv")
+
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
   })
 }
