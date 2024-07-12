@@ -160,20 +160,21 @@ overrepServer <- function(id, se) {
       
       # Select sample data and remove NA measurements
       filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
-      fdr_m <- assay(filtered, "adj.P.Val")
-      fdr_m <- na.omit(fdr_m)
-      lfc_m <- assay(filtered, "logFC")[rownames(fdr_m), ]
+      assay_data <- lapply(c("adj.P.Val", "logFC"), \(x) assay(filtered, x))
+      df <- as.data.frame(do.call(cbind, assay_data))
+      colnames(df) <- c("adj.P.Val", "logFC")
+      setDT(df, keep.rownames = "feature_id")
+      df <- df[!is.na(df$logFC), ]
       
-      # Create vectors of up/down genes
-      up <- as.vector(fdr_m < input$fdr & lfc_m > 0)
-      down <- as.vector(fdr_m < input$fdr & lfc_m < 0)
-      up_genes <- rownames(filtered[up, ])
-      down_genes <- rownames(filtered[down, ])
+      # Extract the gene sets to test
+      up_genes <- df[adj.P.Val < input$fdr & logFC > 0, unique(feature_id)]
+      down_genes <- df[adj.P.Val < input$fdr & logFC < 0, unique(feature_id)]
+      all_genes <- df[, unique(feature_id)]
       
       # Perform over-representation analysis
       ego_up <- enrichGO(
-        up_genes,
-        universe = rownames(fdr_m),
+        gene = up_genes,
+        universe = all_genes,
         OrgDb = org.Hs.eg.db,
         keyType = "SYMBOL",
         ont = input$ontology,
@@ -187,8 +188,8 @@ overrepServer <- function(id, se) {
       )
       
       ego_down <- enrichGO(
-        down_genes,
-        universe = rownames(fdr_m),
+        gene = down_genes,
+        universe = all_genes,
         OrgDb = org.Hs.eg.db,
         keyType = "SYMBOL",
         ont = input$ontology,
@@ -210,8 +211,10 @@ overrepServer <- function(id, se) {
       ego_up <- results()[["up"]]
       ego_down <- results()[["down"]]
       
-      if (is.null(ego_up) & is.null(ego_down)) {
-        validate("No significant GO terms were found!")
+      if (is.null(ego_up)) {
+        validate("No significant results for up-regulated genes!")
+      } else if (is.null(ego_down)) {
+        validate("No significant results for down-regulated genes!")
       }
       
       dt <- rbindlist(
@@ -240,7 +243,7 @@ overrepServer <- function(id, se) {
         )
       
       if (nrow(data.frame(selected)) == 0) {
-        validate("No significant GO terms were found!")
+        validate("No significant results for selection! Check other gene set.")
       }
       
       enrichplot::dotplot(selected, showCategory = input$n) +
@@ -256,7 +259,7 @@ overrepServer <- function(id, se) {
       )
       
       if (nrow(data.frame(selected)) == 0) {
-        validate("No significant GO terms were found!")
+        validate("No significant results for selection! Check other gene set.")
       }
       
       res <- enrichplot::pairwise_termsim(selected)
