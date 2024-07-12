@@ -80,7 +80,8 @@ gseaUI <- function(id, choice_list, pathway_names) {
         label = "Run GSEA",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       dropdownButton(
@@ -117,13 +118,13 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         closeOnClickOutside = FALSE,
         btn_labels = NA,
       )
-      
+
       # Subset for only genes
       filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
       z_stats <- assay(filtered, "z")[, 1]
       names(z_stats) <- rownames(filtered)
       z_stats <- z_stats[!is.na(z_stats)]
-      
+
       # Run FGSEA
       res <- fgsea::fgsea(
         pathways = pathways[[input$pathway]],
@@ -133,39 +134,56 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         maxSize = input$max
       )
       res <- res[order(padj)]
-      
+
       # Make the GSEA plot from the top result
       updatePickerInput(session, "geneset", selected = res[1, pathway])
 
       closeSweetAlert()
       return(list(results = res, stats = z_stats))
     }) |> bindEvent(input$run)
-    
+
     # Enrichment Plot
-    output$plot <- renderPlot({
+    eplot <- reactive({
       p <- pathway_dt[input$geneset, Pathway]
       fgsea::plotEnrichment(
         pathway = pathways[[p]][[input$geneset]],
         stats = data()[["stats"]]
-        ) +
+      ) +
         ggplot2::ggtitle(input$geneset) +
         coriell::theme_coriell()
     })
-    
+    output$plot <- renderPlot(eplot())
+
     # GSEA results table
-    output$table <- render_gt({ 
-      data()[["results"]] |> 
-        gt() |> 
+    output$table <- render_gt({
+      data()[["results"]] |>
+        gt() |>
         cols_width(
           pathway ~ px(200),
           leadingEdge ~ px(500)
-        ) |> 
+        ) |>
         tab_header(
           title = gt::md("**GSEA Results**")
-        ) |> 
+        ) |>
         opt_interactive()
-      })
-  
+    })
+
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("gsea_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+
+        data.table::fwrite(data()[["results"]], "data.tsv", sep = "\t", sep2 = c("", " ", ""))
+        ggsave("enrichment-plot.pdf", plot = eplot(), device = "pdf", width = 11, height = 7)
+        
+        files <- c("data.tsv", "enrichment-plot.pdf")
+
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
   })
 }
-
