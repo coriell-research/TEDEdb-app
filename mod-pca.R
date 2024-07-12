@@ -74,12 +74,12 @@ pcaUI <- function(id) {
         NS(id, "dataset"),
         label = "Select data",
         choices = c(
+          "z-statistic" = "z",
+          "t-statistic" = "t",
           "logFC" = "lfc", 
-          "FDR" = "fdr", 
-          "z-statistic" = "stat",
-          "Avg. logCPM" = "lcpm"
+          "P-value" = "p"
         ),
-        selected = "lfc",
+        selected = "z",
         inline = TRUE
       ),
       prettyCheckbox(
@@ -101,7 +101,7 @@ pcaUI <- function(id) {
       prettyCheckbox(
         NS(id, "complete"),
         label = "Use complete cases?",
-        value = TRUE,
+        value = FALSE,
         icon = icon("check"),
         status = "success",
         animation = "rotate"
@@ -109,7 +109,7 @@ pcaUI <- function(id) {
       numericInput(
         NS(id, "rank"),
         label = "Number of components",
-        value = 30,
+        value = 10,
         min = 3,
         max = Inf,
         step = 1
@@ -204,9 +204,9 @@ pcaServer <- function(id, se, keep) {
       m <- switch(
         input$dataset,
         lfc = assay(filtered, "logFC"),
-        fdr = assay(filtered, "adj.P.Val"),
-        stat = assay(filtered, "z"),
-        lcpm = assay(filtered, "AveExpr")
+        p = assay(filtered, "P.Value"),
+        z = assay(filtered, "z"),
+        t = assay(filtered, "t")
       )
       
       # Use only complete cases OR impute default values otherwise
@@ -216,9 +216,9 @@ pcaServer <- function(id, se, keep) {
         val <- switch(
           input$dataset,
           lfc = 0,
-          fdr = 1,
-          stat = 0,
-          lcpm = 0
+          p = 1,
+          z = 0,
+          t = 0
         )
         m[is.na(m)] <- val
       }
