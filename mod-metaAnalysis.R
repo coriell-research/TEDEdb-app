@@ -110,37 +110,79 @@ metaServer <- function(id, se, keep) {
         res <- coriell::meta_de(filtered, method, fdr = selected_assay)
       }
       
+      # Drop values that could not be calculated
+      before <- nrow(res)
+      res <- res[!is.na(Combined.Pval)][order(Combined.Pval)]
+      after <- nrow(res)
+      showNotification(
+        paste("Removing", before-after, "observations where P-values could not be combined"),
+        type = "message", 
+        duration = 10,
+        closeButton = TRUE
+      )
+      
+      # Show this here after creating the results instead of running in reactive below
+      showNotification(
+        "Creating Meta-Volcano Plot...",
+        type = "message", 
+        duration = 20,
+        closeButton = TRUE
+      )
+      
       closeSweetAlert()
       return(res)
     }) |> bindEvent(input$run)
     
     # Show the metavolcano
     output$metavolcano <- renderPlotly({
-      showNotification(
-        "Creating Meta-Volcano Plot...",
-        type = "message", duration = 10,
-        closeButton = TRUE
-      )
-      plot_ly(
-        data = results(),
-        customdata = results()[, Feature],
+      
+      
+      plotly::plot_ly(
+        colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple2")) |> 
+      plotly::add_trace(
+        data = results()[Direction == "up"],
         x = ~ get(input$x),
         y = ~ -log10(get(input$y)),
         color = ~ Direction,
-        size = 12,
         text = ~ paste("Gene:", Feature),
+        customdata = results()[Direction == "up", Feature],
         type = "scatter",
         mode = "markers",
-        colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple4", "none" = "grey40")
+        showlegend = TRUE,
+        visible = TRUE
       ) |> 
-        plotly::layout(
-          title = "Meta-Volcano", 
-          xaxis = list(title = "logFC"),
-          yaxis = list(title = "-log10(PValue)"),
-          dragmode = "lasso"
+      plotly::add_trace(
+        data = results()[Direction == "down"],
+        x = ~ get(input$x),
+        y = ~ -log10(get(input$y)),
+        color = ~ Direction,
+        text = ~ paste("Gene:", Feature),
+        customdata = results()[Direction == "down", Feature],
+        type = "scatter",
+        mode = "markers",
+        showlegend = TRUE,
+        visible = TRUE
       ) |>
-      event_register("plotly_selected") |> 
-      toWebGL()
+      plotly::add_trace(
+        data = results()[Direction == "mixed"],
+        x = ~ get(input$x),
+        y = ~ -log10(get(input$y)),
+        color = ~ Direction,
+        text = ~ paste("Gene:", Feature),
+        customdata = results()[Direction == "mixed", Feature],
+        type = "scatter",
+        mode = "markers",
+        showlegend = TRUE,
+        visible = "legendonly"
+        ) |>
+      plotly::layout(
+        title = "Meta-Volcano",
+        xaxis = list(title = "logFC"),
+        yaxis = list(title = "-log10(PValue)"),
+        dragmode = "lasso"
+        ) |>
+      plotly::event_register("plotly_selected") |>
+      plotly::toWebGL()
     })
     
     # Show results in table
