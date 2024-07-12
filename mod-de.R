@@ -72,44 +72,60 @@ deServer <- function(id, se) {
       keep_col <- input$ID
       filtered <- se[keep_rows, keep_col]
       
-      dt <- data.table(
-        feature_id = rownames(filtered),
-        FDR = assay(filtered, "adj.P.Val")[, 1],
-        logFC = assay(filtered, "logFC")[, 1],
-        logCPM = assay(filtered, "AveExpr")[, 1],
-        t =  assay(filtered, "t")[, 1],
-        z = assay(filtered, "z")[, 1]
-      )
-      na.omit(dt)
-    })
-    
-    output$volcano <- renderPlot({
+      # Extract assay data as a data.table for plotting
+      assay_data <- lapply(names(assays(filtered)), \(x) assay(filtered, x))
+      df <- as.data.frame(do.call(cbind, assay_data))
+      colnames(df) <- names(assays(filtered))
+      setDT(df, keep.rownames = "feature_id")
+      df <- df[!is.na(df$logFC), ]
+      setorder(df, adj.P.Val)
+      
       showNotification(
         "Creating Volcano Plot...",
         type = "message", duration = 5,
         closeButton = TRUE
       )
-      ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_volcano(data(), fdr = input$fdr, lfc = log2(input$fc), 
-                            up_shape = 16, down_shape = 16, nonde_shape = '.') +
-        ggplot2::ggtitle(ptitle) +
-        coriell::theme_coriell()
-      })
-    output$ma <- renderPlot({
       showNotification(
         "Creating MA Plot...",
         type = "message", duration = 5,
         closeButton = TRUE
       )
+      
+      return(df)
+    })
+    
+    output$volcano <- renderPlot({
       ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
-      coriell::plot_md(data(), fdr = input$fdr, lfc = log2(input$fc),
-                       up_shape = 16, down_shape = 16, nonde_shape = '.') +
+      coriell::plot_volcano(
+        df = data(), 
+        y = "adj.P.Val",
+        fdr = input$fdr, 
+        lfc = log2(input$fc), 
+        up_shape = 16, 
+        down_shape = 16, 
+        nonde_shape = '.'
+        ) +
+        ggplot2::ggtitle(ptitle) +
+        coriell::theme_coriell()
+      })
+    output$ma <- renderPlot({
+      ptitle <- gsub("_vs_", " vs ", gsub("PRJNA[0-9]+\\.", "", input$ID))
+      coriell::plot_md(
+        df = data(), 
+        x = "AveExpr", 
+        sig_col = "adj.P.Val",
+        fdr = input$fdr, 
+        lfc = log2(input$fc),
+        up_shape = 16, 
+        down_shape = 16, 
+        nonde_shape = '.'
+        ) +
         ggplot2::ggtitle(ptitle) +
         coriell::theme_coriell()
       })
     
     output$table <- render_gt({ 
-      data()[order(FDR)] |> 
+      data() |> 
         gt() |> 
         tab_header(
           title = gt::md("**Differential Expression Results**")
