@@ -75,13 +75,6 @@ gseaUI <- function(id, choice_list, pathway_names) {
         max = Inf,
         min = 10
       ),
-      radioGroupButtons(
-        NS(id, "score"),
-        label = "Score type",
-        choices = c("Standard" = "std", "Negative" = "neg", "Positive" = "pos"),
-        selected = "std",
-        status = "primary"
-      ),
       actionBttn(
         NS(id, "run"),
         label = "Run GSEA",
@@ -126,8 +119,8 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       )
       
       # Subset for only genes
-      filtered <- se[rowData(se)$feature_type == "Gene", ]
-      z_stats <- assay(filtered, "stat")[, input$ID]
+      filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
+      z_stats <- assay(filtered, "z")[, 1]
       names(z_stats) <- rownames(filtered)
       z_stats <- z_stats[!is.na(z_stats)]
       
@@ -137,8 +130,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         stats = z_stats,
         sampleSize = input$size,
         minSize = input$min,
-        maxSize = input$max,
-        scoreType = input$score
+        maxSize = input$max
       )
       res <- res[order(padj)]
       
