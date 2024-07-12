@@ -82,7 +82,9 @@ metaServer <- function(id, se, keep) {
       
       selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
-        SummarizedExperiment::assay(filtered, "logp") <- log1p(SummarizedExperiment::assay(filtered, "P.Value"))
+        SummarizedExperiment::assay(filtered, "logp") <- log(
+          SummarizedExperiment::assay(filtered, "P.Value")
+          )
         selected_assay <- "logp"
       }
 
@@ -97,17 +99,43 @@ metaServer <- function(id, se, keep) {
         Wilkinson = metapod::parallelWilkinson
       )
       
-      # Perform P-value combination 
-      if (input$method %in% c("HolmMin", "Wilkinson")) {
-        res <- coriell::meta_de(
-          filtered, 
-          method, 
-          fdr = selected_assay, 
-          min.prop = input$min_prop,
-          min.n = input$min_n
+      # Perform P-value combination
+      result <- tryCatch({
+        if (input$method %in% c("HolmMin", "Wilkinson")) {
+          res <- coriell::meta_de(
+            filtered, 
+            method, 
+            fdr = selected_assay, 
+            min.prop = input$min_prop,
+            min.n = input$min_n,
+            log.p = isTRUE(input$logp)
           )
-      } else {
-        res <- coriell::meta_de(filtered, method, fdr = selected_assay)
+        } else {
+          res <- coriell::meta_de(
+            filtered, 
+            method, 
+            fdr = selected_assay,
+            log.p = isTRUE(input$logp)
+            )
+          }
+        }, 
+        error = function(e) {
+          print(e)
+          return(NULL)
+        },
+        warning = function(e) {
+          print(e)
+          return(NULL)
+        })
+      
+      if (is.null(result)) {
+        closeSweetAlert()
+        validate("Computation failed! Adjust inputs and try again.")
+      }
+      
+      # Rescale log-transformed results back to original scale
+      if (isTRUE(input$logp)) {
+        res[, Combined.Pval := exp(Combined.Pval)]
       }
       
       # Drop values that could not be calculated
@@ -135,7 +163,6 @@ metaServer <- function(id, se, keep) {
     
     # Show the metavolcano
     output$metavolcano <- renderPlotly({
-      
       
       plotly::plot_ly(
         colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple2")) |> 
