@@ -24,9 +24,9 @@ overrepUI <- function(id, choice_list) {
         NS(id, "ontology"),
         label = "Ontology",
         choices = c(
-          "Biological Process" = "BP", 
+          "Biological Process" = "BP",
           "Molecular Function" = "MF",
-          "Cellular Component" = "CC", 
+          "Cellular Component" = "CC",
           "All" = "ALL"
         ),
         selected = "BP"
@@ -46,7 +46,7 @@ overrepUI <- function(id, choice_list) {
         min = 0,
         max = 1,
         step = 0.01
-        ),
+      ),
       numericInput(
         NS(id, "qval"),
         label = "Q-value cutoff (GO)",
@@ -58,12 +58,14 @@ overrepUI <- function(id, choice_list) {
       pickerInput(
         NS(id, "adj"),
         label = "P.adjust method",
-        choices = c("Holm" = "holm", "Hochberg" = "hochberg", 
-                    "Hommel" = "hommel", "Bonferroni" = "bonferroni", 
-                    "BH" = "BH", "BY" = "BY", "FDR" = "fdr", "None" = "none"),
+        choices = c(
+          "Holm" = "holm", "Hochberg" = "hochberg",
+          "Hommel" = "hommel", "Bonferroni" = "bonferroni",
+          "BH" = "BH", "BY" = "BY", "FDR" = "fdr", "None" = "none"
+        ),
         selected = "BH",
         multiple = FALSE
-        ),
+      ),
       numericInput(
         NS(id, "maxss"),
         label = "Max gene set size",
@@ -71,7 +73,7 @@ overrepUI <- function(id, choice_list) {
         min = 1,
         max = Inf,
         step = 10
-        ),
+      ),
       numericInput(
         NS(id, "minss"),
         label = "Min gene set size",
@@ -85,62 +87,65 @@ overrepUI <- function(id, choice_list) {
         label = "Run GO",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       fluidRow(
-        column(6,
-           dropdownButton(
-             tags$h3("Dotplot parameters:"),
-             selectInput(
-               NS(id, "geneset"),
-               label = "Gene Set",
-               choices = c("Up-regulated" = "up", "Down-regulated" = "down"),
-               selected = "up"
-             ),
-             numericInput(
-               NS(id, "n"),
-               label = "Number of terms to display",
-               value = 10,
-               min = 1,
-               max = Inf,
-               step = 1
-             ),
-             status = "danger",
-             icon = icon("gear")
+        column(
+          6,
+          dropdownButton(
+            tags$h3("Dotplot parameters:"),
+            selectInput(
+              NS(id, "geneset"),
+              label = "Gene Set",
+              choices = c("Up-regulated" = "up", "Down-regulated" = "down"),
+              selected = "up"
+            ),
+            numericInput(
+              NS(id, "n"),
+              label = "Number of terms to display",
+              value = 10,
+              min = 1,
+              max = Inf,
+              step = 1
+            ),
+            status = "danger",
+            icon = icon("gear")
           ),
           plotOutput(NS(id, "dotplot"))
+        ),
+        column(
+          6,
+          dropdownButton(
+            tags$h3("EM plot parameters:"),
+            selectInput(
+              NS(id, "geneset2"),
+              label = "Gene Set",
+              choices = c("Up-regulated" = "up", "Down-regulated" = "down"),
+              selected = "up"
+            ),
+            numericInput(
+              NS(id, "nodes"),
+              label = "Number of terms to display",
+              value = 10,
+              min = 1,
+              max = Inf,
+              step = 1
+            ),
+            numericInput(
+              NS(id, "similarity"),
+              label = "Minimum similarity threshold",
+              value = 0.5,
+              min = 0,
+              max = 1,
+              step = 0.01
+            ),
+            status = "danger",
+            icon = icon("gear")
           ),
-        column(6,
-           dropdownButton(
-             tags$h3("EM plot parameters:"),
-             selectInput(
-               NS(id, "geneset2"),
-               label = "Gene Set",
-               choices = c("Up-regulated" = "up", "Down-regulated" = "down"),
-               selected = "up"
-             ),
-             numericInput(
-               NS(id, "nodes"),
-               label = "Number of terms to display",
-               value = 10,
-               min = 1,
-               max = Inf,
-               step = 1
-             ),
-             numericInput(
-               NS(id, "similarity"),
-               label = "Minimum similarity threshold",
-               value = 0.5,
-               min = 0,
-               max = 1,
-               step = 0.01
-             ),
-             status = "danger",
-             icon = icon("gear")
-           ),
           plotOutput(NS(id, "emmap"))
-          )
+        )
       ),
       gt_output(NS(id, "table"))
     )
@@ -150,14 +155,14 @@ overrepUI <- function(id, choice_list) {
 # Display metadata data of selections and return vector of selected IDs
 overrepServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
-    results <- reactive({
+    data <- reactive({
       show_alert(
         title = "Performing Gene Ontology Analysis",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
       )
-      
+
       # Select sample data and remove NA measurements
       filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
       assay_data <- lapply(c("adj.P.Val", "logFC"), \(x) assay(filtered, x))
@@ -165,12 +170,12 @@ overrepServer <- function(id, se) {
       colnames(df) <- c("adj.P.Val", "logFC")
       setDT(df, keep.rownames = "feature_id")
       df <- df[!is.na(df$logFC), ]
-      
+
       # Extract the gene sets to test
       up_genes <- df[adj.P.Val < input$fdr & logFC > 0, unique(feature_id)]
       down_genes <- df[adj.P.Val < input$fdr & logFC < 0, unique(feature_id)]
       all_genes <- df[, unique(feature_id)]
-      
+
       # Perform over-representation analysis
       ego_up <- enrichGO(
         gene = up_genes,
@@ -186,7 +191,7 @@ overrepServer <- function(id, se) {
         pool = TRUE,
         readable = TRUE
       )
-      
+
       ego_down <- enrichGO(
         gene = down_genes,
         universe = all_genes,
@@ -201,75 +206,95 @@ overrepServer <- function(id, se) {
         pool = TRUE,
         readable = TRUE
       )
-      
+
       closeSweetAlert()
       list("down" = ego_down, "up" = ego_up)
     }) |> bindEvent(input$run)
-    
+
     # Table of results
     output$table <- render_gt({
-      ego_up <- results()[["up"]]
-      ego_down <- results()[["down"]]
-      
+      ego_up <- data()[["up"]]
+      ego_down <- data()[["down"]]
+
       if (is.null(ego_up)) {
         validate("No significant results for up-regulated genes!")
       } else if (is.null(ego_down)) {
         validate("No significant results for down-regulated genes!")
       }
-      
+
       dt <- rbindlist(
-        list("Up-regulated" = data.frame(ego_up), 
-             "Down-regulated" = data.frame(ego_down)),
-             idcol = "Gene Set"
-             )
-      
-      dt |> 
-        gt()|> 
+        list(
+          "Up-regulated" = data.frame(ego_up),
+          "Down-regulated" = data.frame(ego_down)
+        ),
+        idcol = "Gene Set"
+      )
+
+      dt |>
+        gt() |>
         cols_width(
           geneID ~ px(450)
-        ) |> 
+        ) |>
         tab_header(
           title = gt::md("**Enriched GO terms**")
-        ) |> 
+        ) |>
         opt_interactive(use_compact_mode = TRUE)
     })
-    
+
     # Dotplot
-    output$dotplot <- renderPlot({
-      selected <- switch(
-        input$geneset,
-        up = results()[["up"]],
-        down = results()[["down"]]
-        )
-      
+    dplot <- reactive({
+      selected <- switch(input$geneset,
+        up = data()[["up"]],
+        down = data()[["down"]]
+      )
+
       if (nrow(data.frame(selected)) == 0) {
         validate("No significant results for selection! Check other gene set.")
       }
-      
+
       enrichplot::dotplot(selected, showCategory = input$n) +
         ggtitle(paste0(tools::toTitleCase(input$geneset), "-regulated GO terms"))
     })
-    
-    # Dotplot
-    output$emmap <- renderPlot({
-      selected <- switch(
-        input$geneset2,
-        up = results()[["up"]],
-        down = results()[["down"]]
+    output$dotplot <- renderPlot(dplot())
+
+    # Network
+    eplot <- reactive({
+      selected <- switch(input$geneset2,
+        up = data()[["up"]],
+        down = data()[["down"]]
       )
-      
+
       if (nrow(data.frame(selected)) == 0) {
         validate("No significant results for selection! Check other gene set.")
       }
-      
+
       res <- enrichplot::pairwise_termsim(selected)
       enrichplot::emapplot(
-        res, 
-        showCategory = input$nodes, 
+        res,
+        showCategory = input$nodes,
         edge.params = list(min = input$similarity)
-        ) +
+      ) +
         ggtitle(paste0(tools::toTitleCase(input$geneset2), "-regulated GO terms"))
     })
-    
+    output$emmap <- renderPlot(eplot())
+
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("over-representation_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+
+        data_up <- data.frame(data()[["up"]])
+        data_down <- data.frame(data()[["down"]])
+        data.table::fwrite(data_up, "data_up-regulated.tsv", sep = "\t")
+        data.table::fwrite(data_down, "data_down-regulated.tsv", sep = "\t")
+        files <- c("data_up-regulated.tsv", "data_down-regulated.tsv")
+
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
   })
 }
