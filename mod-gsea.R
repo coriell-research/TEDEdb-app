@@ -178,7 +178,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
 
         data.table::fwrite(data()[["results"]], "data.tsv", sep = "\t", sep2 = c("", " ", ""))
         ggsave("enrichment-plot.pdf", plot = eplot(), device = "pdf", width = 11, height = 7)
-        
+
         files <- c("data.tsv", "enrichment-plot.pdf")
 
         zip(zipfile = file, files = files)
