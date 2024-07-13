@@ -53,15 +53,15 @@ ui <- navbarPage(
       tabPanel(
         "3. UMAP",
         umapUI("umap")
-        ),
+      ),
       tabPanel(
         "4. Meta-Combine",
         metaUI("meta")
-        ),
+      ),
       tabPanel(
         "5. Ranked Expression",
         rankUI("rank")
-        )
+      )
     )
   ),
   tabPanel(
@@ -75,11 +75,11 @@ ui <- navbarPage(
   tabPanel(
     "Over-representation",
     overrepUI("overrep", choices)
-    ),
+  ),
   tabPanel(
     "Sample vs. Sample",
     upsetUI("upset", choices)
-    ),
+  ),
   tabPanel(
     "About",
     htmltools::includeMarkdown("about.md")
