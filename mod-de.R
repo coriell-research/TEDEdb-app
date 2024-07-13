@@ -145,9 +145,9 @@ deServer <- function(id, se) {
         tmp <- tempdir()
         setwd(tmp)
 
-        data_file <- data.table::fwrite(data(), "data.tsv", sep = "\t")
-        v_plot <- ggsave("volcano-plot.pdf", plot = vplot(), device = "pdf", width = 11, height = 7)
-        m_plot <- ggsave("ma-plot.pdf", plot = maplot(), device = "pdf", width = 11, height = 7)
+        data.table::fwrite(data(), "data.tsv", sep = "\t")
+        ggsave("volcano-plot.pdf", plot = vplot(), device = "pdf", width = 11, height = 7)
+        ggsave("ma-plot.pdf", plot = maplot(), device = "pdf", width = 11, height = 7)
         files <- c("data.tsv", "volcano-plot.pdf", "ma-plot.pdf")
 
         zip(zipfile = file, files = files)
