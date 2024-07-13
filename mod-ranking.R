@@ -33,7 +33,8 @@ rankUI <- function(id) {
         min = 0,
         max = Inf,
         step = 0.5
-      )
+      ),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       gt_output(NS(id, "table"))
@@ -43,7 +44,8 @@ rankUI <- function(id) {
 
 rankServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) { 
-    output$table <- render_gt({
+    
+    data <- reactive({
       showNotification(
         "Collecting Rank Data...",
         type = "message", 
@@ -81,14 +83,18 @@ rankServer <- function(id, se, keep) {
                 Pct_up = round(N_up / Total * 100, 1),
                 Pct_down = round(N_down / Total * 100, 1))][,
                 `:=`(Pct_non = round(N_non / Total * 100, 1),
-                     Total = NULL)]
+                Total = NULL)]
       
       # Add on metadata columns and reorder by most dysregulated
       dt <- setDT(cbind(dt, data.frame(colData(filtered))))
       setorder(dt, Pct_non)
       setcolorder(dt, c("experiment", "contrast", "Pct_up", "Pct_down", "Pct_non"))
       
-      dt |> 
+      return(dt)
+    })
+    
+    output$table <- render_gt({
+      data() |> 
         gt() |> 
         cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
         cols_move(c(tissue, disease), c(cell_line)) |> 
@@ -117,5 +123,21 @@ rankServer <- function(id, se, keep) {
         ) |> 
         opt_interactive(use_compact_mode = TRUE)
     })
+    
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("ranking_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+        
+        data.table::fwrite(data(), "data.tsv", sep = "\t")
+        files <- "data.tsv"
+        
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
   })
 }
