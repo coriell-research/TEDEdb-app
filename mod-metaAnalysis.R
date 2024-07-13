@@ -239,7 +239,7 @@ metaServer <- function(id, se, keep) {
         tmp <- tempdir()
         setwd(tmp)
 
-        data_file <- data.table::fwrite(data(), "data.tsv", sep = "\t")
+        data.table::fwrite(data(), "data.tsv", sep = "\t")
         files <- c("data.tsv")
 
         zip(zipfile = file, files = files)
