@@ -11,22 +11,24 @@ upsetUI <- function(id, choice_list) {
         NS(id, "ids"),
         label = "Experimental Contrasts",
         choices = choice_list[["id"]],
-        selected = c("PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
-                     "PRJNA413957.YB5.HH1.25uM_vs_DMSO_96hr",
-                     "PRJNA413957.YB5.HH1.10uM_vs_DMSO_24hr"),
-        width = '100%',
+        selected = c(
+          "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+          "PRJNA413957.YB5.HH1.25uM_vs_DMSO_96hr",
+          "PRJNA413957.YB5.HH1.10uM_vs_DMSO_24hr"
+        ),
+        width = "100%",
         options = list(
           enable_search = TRUE,
           search_placeholder = "Search Experiments...",
-          non_selected_header = 'All options',
-          selected_header = 'Selected options'
+          non_selected_header = "All options",
+          selected_header = "Selected options"
         )
       ),
       awesomeRadio(
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", 
+          "Genes" = "gene",
           "Transposable Elements" = "TE",
           "Both" = "both"
         ),
@@ -53,7 +55,7 @@ upsetUI <- function(id, choice_list) {
         NS(id, "mode"),
         label = "Combination set mode",
         choices = c(
-          "Distinct" = "distinct", 
+          "Distinct" = "distinct",
           "Intersect" = "intersect",
           "Union" = "union"
         ),
@@ -65,7 +67,8 @@ upsetUI <- function(id, choice_list) {
         label = "Run Upset",
         style = "material-flat",
         color = "danger"
-      )
+      ),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       plotOutput(NS(id, "plot"))
@@ -75,46 +78,46 @@ upsetUI <- function(id, choice_list) {
 
 upsetServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
-    result <- reactive({
+    data <- reactive({
       msg <- showNotification(
         "Performing Overlaps. Please wait...",
         type = "message", duration = NULL,
         closeButton = FALSE
       )
-      
-      keep_rows <- switch(
-        input$features,
+
+      keep_rows <- switch(input$features,
         gene = rowData(se)$feature_type == "Gene",
         TE = rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
       )
-      
+
       # Extract the selected features
       filtered <- se[keep_rows, se$id %in% input$ids]
       lfc_m <- assay(filtered, "logFC")
       fdr_m <- assay(filtered, "adj.P.Val")
-      
+
       # Calculate the up/down-regulated features across contrasts
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
       down_m <- lfc_m < input$lfc & fdr_m < input$fdr
-      
+
       # Extract lists of names for each selected contrast
-      up_features <- apply(up_m, 2, \(x) names(x[!is.na(x) & x == TRUE]), 
+      up_features <- apply(up_m, 2, \(x) names(x[!is.na(x) & x == TRUE]),
         simplify = FALSE
       )
-      down_features <- apply(down_m, 2, \(x) names(x[!is.na(x) & x == TRUE]), 
+      down_features <- apply(down_m, 2, \(x) names(x[!is.na(x) & x == TRUE]),
         simplify = FALSE
       )
-      
+
       # Append direction to list element names
       connames <- gsub("PRJNA[0-9]+\\.", "", names(up_features))
       names(up_features) <- paste0(connames, ".up")
       names(down_features) <- paste0(connames, ".down")
       l <- c(up_features, down_features)
-      
-      result <- tryCatch({
-        make_comb_mat(l, mode = input$mode)
-        }, 
+
+      result <- tryCatch(
+        {
+          make_comb_mat(l, mode = input$mode)
+        },
         error = function(e) {
           print(e)
           return(NULL)
@@ -122,28 +125,51 @@ upsetServer <- function(id, se) {
         warning = function(e) {
           print(e)
           return(NULL)
-        })
-      
+        }
+      )
+
       if (is.null(result)) {
         closeSweetAlert()
         validate("Something went wrong creating the combination matrix. Modify inputs and try again.")
       }
-      
+
       removeNotification(msg)
-      
+
       return(result)
     }) |> bindEvent(input$run)
-    
-    output$plot <- renderPlot({
-      m <- result()
+
+    uplot <- reactive({
+      m <- data()
       m <- m[comb_degree(m) == 2]
-      
-      UpSet(
-        m, 
+
+      u <- UpSet(
+        m,
         comb_order = order(comb_size(m), decreasing = TRUE),
         top_annotation = upset_top_annotation(m, add_numbers = TRUE),
         right_annotation = upset_right_annotation(m, add_numbers = TRUE)
-        )
+      )
+      
+      draw(u, padding = unit(c(20, 20, 20, 20), "mm"))
     })
-  }) 
+    output$plot <- renderPlot(uplot())
+
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("upset_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+        
+        png("upset-plot.png", width = 12, height = 8, units = "in", res = 300)
+        ComplexHeatmap::draw(uplot(), padding = unit(c(20, 20, 20, 20), "mm"))
+        dev.off()
+
+        files <- "upset-plot.png"
+        
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
+  })
 }
