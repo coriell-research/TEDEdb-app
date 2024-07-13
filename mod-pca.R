@@ -63,7 +63,7 @@ pcaUI <- function(id) {
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", 
+          "Genes" = "gene",
           "Transposable Elements" = "TE",
           "Both" = "both"
         ),
@@ -76,7 +76,7 @@ pcaUI <- function(id) {
         choices = c(
           "z-statistic" = "z",
           "t-statistic" = "t",
-          "logFC" = "lfc", 
+          "logFC" = "lfc",
           "P-value" = "p"
         ),
         selected = "z",
@@ -126,9 +126,9 @@ pcaUI <- function(id) {
         NS(id, "algorithm"),
         label = "PCA algorithm",
         choices = c(
-          "FastAuto" = "fast", 
+          "FastAuto" = "fast",
           "Irlba" = "irlba",
-          "Random" = "random", 
+          "Random" = "random",
           "Exact" = "exact"
         ),
         selected = "fast",
@@ -180,41 +180,36 @@ pcaUI <- function(id) {
 # PCA server
 pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    
     # Perform PCA on 'Run'
     pcaobj <- reactive({
-      
       show_alert(
         title = "Performing PCA",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
       )
-      
+
       # Select the relevant data based on selected IDs and features
-      keep_rows <- switch(
-        input$features,
+      keep_rows <- switch(input$features,
         gene = rowData(se)$feature_type == "Gene",
         TE = rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
       )
-      
+
       filtered <- se[keep_rows, keep()]
       df <- data.frame(colData(filtered))
-      m <- switch(
-        input$dataset,
+      m <- switch(input$dataset,
         lfc = assay(filtered, "logFC"),
         p = assay(filtered, "P.Value"),
         z = assay(filtered, "z"),
         t = assay(filtered, "t")
       )
-      
+
       # Use only complete cases OR impute default values otherwise
       if (isTRUE(input$complete)) {
         m <- na.omit(m)
       } else {
-        val <- switch(
-          input$dataset,
+        val <- switch(input$dataset,
           lfc = 0,
           p = 1,
           z = 0,
@@ -222,33 +217,34 @@ pcaServer <- function(id, se, keep) {
         )
         m[is.na(m)] <- val
       }
-      
+
       # Remove low/zero-variance features
       if (is.na(input$removeVar) || input$removeVar == 0) {
         m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
       } else {
         m <- coriell::remove_var(m, input$removeVar)
       }
-      
+
       # Select the PCA algoritm
-      algo <- switch(
-        input$algorithm,
+      algo <- switch(input$algorithm,
         fast = FastAutoParam(),
         irlba = IrlbaParam(),
         random = RandomParam(),
         exact = ExactParam()
       )
-      
+
       # Attempt PCA computation
-      result <- tryCatch({
-        PCAtools::pca(
-          m,
-          metadata = df,
-          center = input$center,
-          scale = input$scale,
-          rank = min(c(input$rank, ncol(m), nrow(m))),
-          BSPARAM = algo
-        )}, 
+      result <- tryCatch(
+        {
+          PCAtools::pca(
+            m,
+            metadata = df,
+            center = input$center,
+            scale = input$scale,
+            rank = min(c(input$rank, ncol(m), nrow(m))),
+            BSPARAM = algo
+          )
+        },
         error = function(e) {
           print(e)
           return(NULL)
@@ -256,13 +252,14 @@ pcaServer <- function(id, se, keep) {
         warning = function(e) {
           print(e)
           return(NULL)
-        })
-      
+        }
+      )
+
       if (is.null(result)) {
         closeSweetAlert()
         validate("Computation failed! Adjust inputs and try again.")
       }
-      
+
       closeSweetAlert()
       return(result)
     }) |> bindEvent(input$run)
@@ -283,35 +280,35 @@ pcaServer <- function(id, se, keep) {
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
-      
-      df |> 
-        gt() |> 
+
+      df |>
+        gt() |>
         cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
-        cols_move(c(tissue, disease), c(cell_line)) |> 
+        cols_move(c(tissue, disease), c(cell_line)) |>
         cols_label(
-            .list = c(
-              "id" = "ID",
-              "experiment" = "BioProject ID",
-              "contrast" = "Contrast",
-              "cell_line" = "Cell Line",
-              "drug" = "Drug",
-              "dose" = "Dose",
-              "time_hr" = "Time (hr)",
-              "desc" = "Description",
-              "epigenetic_class" = "Epigenetic Class",
-              "tissue" = "Tissue",
-              "disease" = "Disease"
-            )
-          ) |> 
-          cols_width(
-            desc ~ px(450),
-            contrast ~ px(300),
-            experiment ~ px(150)
-          ) |> 
-          tab_header(
-            title = gt::md("**Selected PC Data**")
-          ) |> 
-          opt_interactive(use_compact_mode = TRUE)
+          .list = c(
+            "id" = "ID",
+            "experiment" = "BioProject ID",
+            "contrast" = "Contrast",
+            "cell_line" = "Cell Line",
+            "drug" = "Drug",
+            "dose" = "Dose",
+            "time_hr" = "Time (hr)",
+            "desc" = "Description",
+            "epigenetic_class" = "Epigenetic Class",
+            "tissue" = "Tissue",
+            "disease" = "Disease"
+          )
+        ) |>
+        cols_width(
+          desc ~ px(450),
+          contrast ~ px(300),
+          experiment ~ px(150)
+        ) |>
+        tab_header(
+          title = gt::md("**Selected PC Data**")
+        ) |>
+        opt_interactive(use_compact_mode = TRUE)
     })
   })
 }
