@@ -14,6 +14,7 @@ suppressPackageStartupMessages(library(clusterProfiler))
 suppressPackageStartupMessages(library(org.Hs.eg.db))
 suppressPackageStartupMessages(library(ComplexHeatmap))
 suppressPackageStartupMessages(library(matrixStats))
+# umap & metapod packages must also be installed
 
 # Load modules
 source("mod-selectIds.R")
