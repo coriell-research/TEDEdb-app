@@ -3,6 +3,26 @@
     "Version": "4.4.1",
     "Repositories": [
       {
+        "Name": "BioCsoft",
+        "URL": "https://bioconductor.org/packages/3.19/bioc"
+      },
+      {
+        "Name": "BioCann",
+        "URL": "https://bioconductor.org/packages/3.19/data/annotation"
+      },
+      {
+        "Name": "BioCexp",
+        "URL": "https://bioconductor.org/packages/3.19/data/experiment"
+      },
+      {
+        "Name": "BioCworkflows",
+        "URL": "https://bioconductor.org/packages/3.19/workflows"
+      },
+      {
+        "Name": "BioCbooks",
+        "URL": "https://bioconductor.org/packages/3.19/books"
+      },
+      {
         "Name": "CRAN",
         "URL": "https://packagemanager.posit.co/cran/latest"
       }
@@ -1881,6 +1901,16 @@
         "rlang"
       ],
       "Hash": "e2817ccf4a065c5d9d7f2cfbe7c1d78c"
+    },
+    "metapod": {
+      "Package": "metapod",
+      "Version": "1.12.0",
+      "Source": "Bioconductor",
+      "Repository": "Bioconductor 3.19",
+      "Requirements": [
+        "Rcpp"
+      ],
+      "Hash": "026552a86c3aa0d92d4d8b12d80010cc"
     },
     "mgcv": {
       "Package": "mgcv",
