@@ -34,7 +34,8 @@ selectIdUI <- function(id, choice_list) {
       pick(id, "mode_of_action", "Mode of Action", choice_list),
       pick(id, "target", "Target", choice_list),
       pick(id, "tissue", "Tissue(s)", choice_list),
-      pick(id, "disease", "Disease(s)", choice_list)
+      pick(id, "disease", "Disease(s)", choice_list),
+      downloadButton(NS(id, "download"))
     ),
     mainPanel(
       gt::gt_output(NS(id, "table"))
@@ -60,6 +61,7 @@ selectIdServer <- function(id, se) {
         disease %in% input$disease
       )
     })
+    
     output$table <- gt::render_gt({
       selected() |> 
         gt() |> 
@@ -90,6 +92,22 @@ selectIdServer <- function(id, se) {
         ) |> 
         opt_interactive(use_compact_mode = TRUE)
     })
+    
+    output$download <- downloadHandler(
+      filename = function() {
+        paste0("selected-data_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+      },
+      content = function(file) {
+        tmp <- tempdir()
+        setwd(tmp)
+        
+        data.table::fwrite(selected(), "data.tsv", sep = "\t")
+        files <- c("data.tsv")
+        
+        zip(zipfile = file, files = files)
+      },
+      contentType = "application/zip"
+    )
 
     # Return the selected IDs
     reactive(rownames(selected()))
