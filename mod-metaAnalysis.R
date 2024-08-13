@@ -80,6 +80,10 @@ metaServer <- function(id, se, keep) {
         btn_labels = NA,
       )
       filtered <- se[, keep()]
+      
+      # Impute missing values for testing
+      assay(filtered, "P.Value")[is.na(assay(filtered, "P.Value"))] <- 1
+      assay(filtered, "logFC")[is.na(assay(filtered, "logFC"))] <- 0
 
       selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
