@@ -39,7 +39,7 @@ setkey(pathway_dt, Name)
 
 
 ui <- navbarPage(
-  "GEO Cancer RNAseq",
+  "ComiTE App",
   theme = shinytheme("yeti"),
   tabPanel(
     "Meta-Analysis",
