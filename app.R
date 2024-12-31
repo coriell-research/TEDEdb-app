@@ -39,7 +39,7 @@ setkey(pathway_dt, Name)
 
 
 ui <- navbarPage(
-  "ComiTE App",
+  "TEDEdb App",
   theme = shinytheme("yeti"),
   tabPanel(
     "Meta-Analysis",
