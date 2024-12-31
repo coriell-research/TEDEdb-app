@@ -19,7 +19,7 @@ metaUI <- function(id) {
       awesomeCheckbox(
         NS(id, "logp"),
         label = "Log Transform P-Values?",
-        value = FALSE,
+        value = TRUE,
         status = "danger"
       ),
       numericInput(
@@ -148,6 +148,7 @@ metaServer <- function(id, se, keep) {
       before <- nrow(res)
       res <- res[!is.na(Combined.Pval)][order(Combined.Pval)]
       after <- nrow(res)
+      
       showNotification(
         paste("Removing", before - after, "observations where P-values could not be combined"),
         type = "message",
@@ -206,7 +207,7 @@ metaServer <- function(id, se, keep) {
           type = "scatter",
           mode = "markers",
           showlegend = TRUE,
-          visible = "legendonly"
+          visible = TRUE
         ) |>
         plotly::layout(
           title = "Meta-Volcano",
