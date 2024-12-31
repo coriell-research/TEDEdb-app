@@ -220,14 +220,18 @@ umapServer <- function(id, se, keep) {
         m <- coriell::remove_var(m, input$removeVar)
       }
       
-      # Scale and center the data before computation - result is transposed
-      m <- as.matrix(scale(t(m), center = input$center, scale = input$scale))
-      
       # Attempt UMAP calculation
       result <- tryCatch({
-        coriell::UMAP(
+        
+        pca_res <- PCAtools::pca(
           m,
           metadata = df,
+          center = input$center,
+          scale = input$scale
+        )
+        
+        coriell::UMAP(
+          pca_res,
           n_neighbors = input$neighbors,
           metric = input$metric,
           min_dist = input$mindist,
