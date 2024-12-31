@@ -110,7 +110,7 @@ metaServer <- function(id, se, keep) {
             res <- coriell::meta_de(
               filtered,
               method,
-              fdr = selected_assay,
+              pval = selected_assay,
               min.prop = input$min_prop,
               min.n = input$min_n,
               log.p = isTRUE(input$logp)
@@ -119,7 +119,7 @@ metaServer <- function(id, se, keep) {
             res <- coriell::meta_de(
               filtered,
               method,
-              fdr = selected_assay,
+              pval = selected_assay,
               log.p = isTRUE(input$logp)
             )
           }
