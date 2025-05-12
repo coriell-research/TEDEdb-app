@@ -27,6 +27,7 @@ selectIdUI <- function(id, choice_list) {
     sidebarPanel(
       width = 3,
       pick(id, "experiment", "Experiment(s)", choice_list),
+      pick(id, "contrast", "Contrast(s)", choice_list),
       pick(id, "cell_line", "Cell Line(s)", choice_list),
       pick(id, "drug", "Drug(s)", choice_list),
       pick(id, "epigenetic_class", "Epigenetic Class(es)", choice_list),
@@ -35,6 +36,7 @@ selectIdUI <- function(id, choice_list) {
       pick(id, "target", "Target", choice_list),
       pick(id, "tissue", "Tissue(s)", choice_list),
       pick(id, "disease", "Disease(s)", choice_list),
+      pick(id, "outlier_flags", "Outlier Flag(s)", choice_list),
       downloadButton(NS(id, "download"))
     ),
     mainPanel(
@@ -51,6 +53,8 @@ selectIdServer <- function(id, se) {
       subset(
         df,
         experiment %in% input$experiment &
+        contrast %in% input$contrast &
+        outlier_flags %in% input$outlier_flags &
         cell_line %in% input$cell_line &
         drug %in% input$drug &
         epigenetic_class %in% input$epigenetic_class &
@@ -79,7 +83,8 @@ selectIdServer <- function(id, se) {
             "desc" = "Description",
             "epigenetic_class" = "Epigenetic Class",
             "tissue" = "Tissue",
-            "disease" = "Disease"
+            "disease" = "Disease",
+            "outlier_flags" = "Outlier Flag(s)"
           )
         ) |> 
         cols_width(
