@@ -6,7 +6,7 @@
 
 # Function for plotting PCA results with plotly
 plotBiplot <- function(obj, x, y, col) {
-  # Extract components from the PCA object and bind intoa single data.frame
+  # Extract components from the PCA object and bind into a single data.frame
   data <- obj$rotated
   metadata <- obj$metadata
   var_x <- round(obj$variance[x], 1)
@@ -75,7 +75,6 @@ pcaUI <- function(id) {
         label = "Select data",
         choices = c(
           "z-statistic" = "z",
-          "t-statistic" = "t",
           "logFC" = "lfc",
           "P-value" = "p"
         ),
@@ -117,7 +116,7 @@ pcaUI <- function(id) {
       numericInput(
         NS(id, "removeVar"),
         label = "Remove proportion low variance features",
-        value = NA,
+        value = 0.9,
         min = 0,
         max = 1,
         step = 0.1
@@ -201,28 +200,18 @@ pcaServer <- function(id, se, keep) {
       m <- switch(input$dataset,
         lfc = assay(filtered, "logFC"),
         p = assay(filtered, "P.Value"),
-        z = assay(filtered, "z"),
-        t = assay(filtered, "t")
+        z = assay(filtered, "z")
       )
 
-      # Use only complete cases OR impute default values otherwise
+      # Use only complete cases if selected
       if (isTRUE(input$complete)) {
-        m <- na.omit(m)
-      } else {
-        val <- switch(input$dataset,
-          lfc = 0,
-          p = 1,
-          z = 0,
-          t = 0
-        )
-        m[is.na(m)] <- val
+        has_missing <- DelayedMatrixStats::rowAnyNAs(assay(filtered, "P.Value"))
+        m <- m[!has_missing, ]
       }
 
-      # Remove low/zero-variance features
+      # Remove zero-variance features to avoid PCA failing
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[matrixStats::rowVars(m, useNames = FALSE) != 0, ]
-      } else {
-        m <- coriell::remove_var(m, input$removeVar)
+        m <- m[DelayedMatrixStats::rowVars(m, useNames = FALSE) != 0, ]
       }
 
       # Select the PCA algoritm
@@ -241,6 +230,7 @@ pcaServer <- function(id, se, keep) {
             metadata = df,
             center = input$center,
             scale = input$scale,
+            removeVar = if (is.na(input$removeVar)) NULL else input$removeVar,
             rank = min(c(input$rank, ncol(m), nrow(m))),
             BSPARAM = algo
           )
