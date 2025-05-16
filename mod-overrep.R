@@ -7,7 +7,7 @@ overrepUI <- function(id, choice_list) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "ID"),
         label = "Experimental Contrast",
         choices = choice_list[["id"]],
@@ -20,7 +20,7 @@ overrepUI <- function(id, choice_list) {
           `actions-box` = TRUE
         )
       ),
-      awesomeRadio(
+      shinyWidgets::awesomeRadio(
         NS(id, "ontology"),
         label = "Ontology",
         choices = c(
@@ -55,7 +55,7 @@ overrepUI <- function(id, choice_list) {
         max = 1,
         step = 0.01
       ),
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "adj"),
         label = "P.adjust method",
         choices = c(
@@ -82,7 +82,7 @@ overrepUI <- function(id, choice_list) {
         max = Inf,
         step = 10
       ),
-      actionBttn(
+      shinyWidgets::actionBttn(
         NS(id, "run"),
         label = "Run GO",
         style = "material-flat",
@@ -94,7 +94,7 @@ overrepUI <- function(id, choice_list) {
       fluidRow(
         column(
           6,
-          dropdownButton(
+          shinyWidgets::dropdownButton(
             tags$h3("Dotplot parameters:"),
             selectInput(
               NS(id, "geneset"),
@@ -117,7 +117,7 @@ overrepUI <- function(id, choice_list) {
         ),
         column(
           6,
-          dropdownButton(
+          shinyWidgets::dropdownButton(
             tags$h3("EM plot parameters:"),
             selectInput(
               NS(id, "geneset2"),
@@ -147,7 +147,7 @@ overrepUI <- function(id, choice_list) {
           plotOutput(NS(id, "emmap"))
         )
       ),
-      gt_output(NS(id, "table"))
+      gt::gt_output(NS(id, "table"))
     )
   )
 }
@@ -156,7 +156,7 @@ overrepUI <- function(id, choice_list) {
 overrepServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
-      show_alert(
+      shinyWidgets::show_alert(
         title = "Performing Gene Ontology Analysis",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
@@ -168,8 +168,9 @@ overrepServer <- function(id, se) {
       assay_data <- lapply(c("adj.P.Val", "logFC"), \(x) assay(filtered, x))
       df <- as.data.frame(do.call(cbind, assay_data))
       colnames(df) <- c("adj.P.Val", "logFC")
-      setDT(df, keep.rownames = "feature_id")
-      df <- df[!is.na(df$logFC), ]
+      data.table::setDT(df, keep.rownames = "feature_id")
+      df <- df[!is.na(adj.P.Val)]
+      setorder(df, adj.P.Val)
 
       # Extract the gene sets to test
       up_genes <- df[adj.P.Val < input$fdr & logFC > 0, unique(feature_id)]
@@ -177,10 +178,10 @@ overrepServer <- function(id, se) {
       all_genes <- df[, unique(feature_id)]
 
       # Perform over-representation analysis
-      ego_up <- enrichGO(
+      ego_up <- clusterProfiler::enrichGO(
         gene = up_genes,
         universe = all_genes,
-        OrgDb = org.Hs.eg.db,
+        OrgDb = "org.Hs.eg.db",
         keyType = "SYMBOL",
         ont = input$ontology,
         pvalueCutoff = input$pval,
@@ -192,10 +193,10 @@ overrepServer <- function(id, se) {
         readable = TRUE
       )
 
-      ego_down <- enrichGO(
+      ego_down <- clusterProfiler::enrichGO(
         gene = down_genes,
         universe = all_genes,
-        OrgDb = org.Hs.eg.db,
+        OrgDb = "org.Hs.eg.db",
         keyType = "SYMBOL",
         ont = input$ontology,
         pvalueCutoff = input$pval,
@@ -207,12 +208,12 @@ overrepServer <- function(id, se) {
         readable = TRUE
       )
 
-      closeSweetAlert()
+      shinyWidgets::closeSweetAlert()
       list("down" = ego_down, "up" = ego_up)
     }) |> bindEvent(input$run)
 
     # Table of results
-    output$table <- render_gt({
+    output$table <- gt::render_gt({
       ego_up <- data()[["up"]]
       ego_down <- data()[["down"]]
 
@@ -231,14 +232,12 @@ overrepServer <- function(id, se) {
       )
 
       dt |>
-        gt() |>
-        cols_width(
-          geneID ~ px(450)
-        ) |>
-        tab_header(
-          title = gt::md("**Enriched GO terms**")
-        ) |>
-        opt_interactive(use_compact_mode = TRUE)
+        gt::gt() |>
+        gt::fmt_number(columns = c("RichFactor", "FoldEnrichment", "zScore"), decimals = 2) |> 
+        gt::fmt_scientific(columns = c("pvalue", "p.adjust", "qvalue")) |> 
+        gt::cols_width(geneID ~ px(450)) |>
+        gt::tab_header(title = gt::md("**Enriched GO terms**")) |>
+        gt::opt_interactive(use_compact_mode = TRUE)
     })
 
     # Dotplot
@@ -253,7 +252,7 @@ overrepServer <- function(id, se) {
       }
 
       enrichplot::dotplot(selected, showCategory = input$n) +
-        ggtitle(paste0(tools::toTitleCase(input$geneset), "-regulated GO terms"))
+        ggplot2::ggtitle(paste0(tools::toTitleCase(input$geneset), "-regulated GO terms"))
     })
     output$dotplot <- renderPlot(dplot())
 
@@ -269,12 +268,8 @@ overrepServer <- function(id, se) {
       }
 
       res <- enrichplot::pairwise_termsim(selected)
-      enrichplot::emapplot(
-        res,
-        showCategory = input$nodes,
-        edge.params = list(min = input$similarity)
-      ) +
-        ggtitle(paste0(tools::toTitleCase(input$geneset2), "-regulated GO terms"))
+      enrichplot::emapplot(res, showCategory = input$nodes, min_edge = input$similarity) +
+        ggplot2::ggtitle(paste0(tools::toTitleCase(input$geneset2), "-regulated GO terms"))
     })
     output$emmap <- renderPlot(eplot())
 
