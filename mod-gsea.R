@@ -8,7 +8,7 @@ gseaUI <- function(id, choice_list, pathway_names) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "ID"),
         label = "Experimental Contrast",
         choices = choice_list[["id"]],
@@ -21,19 +21,13 @@ gseaUI <- function(id, choice_list, pathway_names) {
           `actions-box` = TRUE
         )
       ),
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "pathway"),
         label = "MSigDB Gene Set(s)",
         choices = c(
           "HALLMARK (N=50)" = "h",
-          "C1 (N=300): Positional Gene Sets" = "c1",
-          "C2 (N=6495): Curated Gene Sets" = "c2",
-          "C3 (N=3713): Regulatory Target Gene Sets" = "c3",
-          "C4 (N=858): Computational Gene Sets" = "c4",
-          "C5 (N=15,937): Ontology Gene Sets" = "c5",
           "C6 (N=189): Oncogenic Gene Sets" = "c6",
-          "C7 (N=5219): Immunologic Signature Gene Sets" = "c7",
-          "C8 (N=830): Cell Type Signature Gene Sets" = "c8"
+          "C7 (N=5219): Immunologic Signature Gene Sets" = "c7"
         ),
         selected = "h",
         multiple = FALSE,
@@ -84,9 +78,9 @@ gseaUI <- function(id, choice_list, pathway_names) {
       downloadButton(NS(id, "download"))
     ),
     mainPanel(
-      dropdownButton(
+      shinyWidgets::dropdownButton(
         tags$h3("GSEA Plot:"),
-        pickerInput(
+        shinyWidgets::pickerInput(
           NS(id, "geneset"),
           label = "Select gene set to plot",
           choices = pathway_names,
@@ -112,7 +106,7 @@ gseaUI <- function(id, choice_list, pathway_names) {
 gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
-      show_alert(
+      shinyWidgets::show_alert(
         title = "Performing GSEA",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
@@ -136,10 +130,11 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       res <- res[order(padj)]
 
       # Make the GSEA plot from the top result
-      updatePickerInput(session, "geneset", selected = res[1, pathway])
-
-      closeSweetAlert()
+      shinyWidgets::updatePickerInput(session, "geneset", selected = res[1, pathway])
+      shinyWidgets::closeSweetAlert()
+      
       return(list(results = res, stats = z_stats))
+      
     }) |> bindEvent(input$run)
 
     # Enrichment Plot
@@ -155,17 +150,14 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
     output$plot <- renderPlot(eplot())
 
     # GSEA results table
-    output$table <- render_gt({
+    output$table <- gt::render_gt({
       data()[["results"]] |>
-        gt() |>
-        cols_width(
-          pathway ~ px(200),
-          leadingEdge ~ px(500)
-        ) |>
-        tab_header(
-          title = gt::md("**GSEA Results**")
-        ) |>
-        opt_interactive()
+        gt::gt() |>
+        gt::fmt_number(columns = c("log2err", "ES", "NES"), decimals = 1) |> 
+        gt::fmt_scientific(columns = c("pval", "padj")) |> 
+        gt::cols_width(pathway ~ px(300), leadingEdge ~ px(500)) |>
+        gt::tab_header(title = gt::md("**GSEA Results**")) |>
+        gt::opt_interactive()
     })
 
     output$download <- downloadHandler(
