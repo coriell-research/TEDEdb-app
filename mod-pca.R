@@ -1,7 +1,6 @@
 ## Perform PCA on the selected sample IDs
 ##
-## PCA result object is returned and passed to the UMAP module
-##
+## 
 ## ----------------------------------------------------------------------------
 
 # Function for plotting PCA results with plotly
@@ -27,7 +26,7 @@ plotBiplot <- function(obj, x, y, col) {
     )
   }
 
-  plot_ly(
+  plotly::plot_ly(
     data = d,
     customdata = rownames(d),
     x = ~ get(x),
@@ -51,7 +50,7 @@ plotBiplot <- function(obj, x, y, col) {
       yaxis = list(title = paste0(y, " [", var_y, "%]")),
       showlegend = FALSE
     ) |>
-    event_register("plotly_selected")
+    plotly::event_register("plotly_selected")
 }
 
 # Set up the input parameters for PCA
@@ -59,7 +58,7 @@ pcaUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      awesomeRadio(
+      shinyWidgets::awesomeRadio(
         NS(id, "features"),
         label = "Select features",
         choices = c(
@@ -70,7 +69,7 @@ pcaUI <- function(id) {
         selected = "gene",
         inline = TRUE
       ),
-      awesomeRadio(
+      shinyWidgets::awesomeRadio(
         NS(id, "dataset"),
         label = "Select data",
         choices = c(
@@ -81,7 +80,7 @@ pcaUI <- function(id) {
         selected = "z",
         inline = TRUE
       ),
-      prettyCheckbox(
+      shinyWidgets::prettyCheckbox(
         NS(id, "center"),
         label = "Center data",
         value = TRUE,
@@ -89,7 +88,7 @@ pcaUI <- function(id) {
         status = "success",
         animation = "rotate"
       ),
-      prettyCheckbox(
+      shinyWidgets::prettyCheckbox(
         NS(id, "scale"),
         label = "Scale data",
         value = TRUE,
@@ -97,7 +96,7 @@ pcaUI <- function(id) {
         status = "success",
         animation = "rotate"
       ),
-      prettyCheckbox(
+      shinyWidgets::prettyCheckbox(
         NS(id, "complete"),
         label = "Use complete cases?",
         value = FALSE,
@@ -121,7 +120,7 @@ pcaUI <- function(id) {
         max = 1,
         step = 0.1
       ),
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "algorithm"),
         label = "PCA algorithm",
         choices = c(
@@ -133,7 +132,7 @@ pcaUI <- function(id) {
         selected = "fast",
         multiple = FALSE
       ),
-      actionBttn(
+      shinyWidgets::actionBttn(
         NS(id, "run"),
         label = "Run PCA",
         style = "material-flat",
@@ -141,7 +140,7 @@ pcaUI <- function(id) {
       )
     ),
     mainPanel(
-      dropdownButton(
+      shinyWidgets::dropdownButton(
         tags$h3("Biplot parameters:"),
         selectInput(
           NS(id, "x"),
@@ -170,8 +169,8 @@ pcaUI <- function(id) {
         status = "danger",
         icon = icon("gear")
       ),
-      plotlyOutput(NS(id, "biplot")),
-      gt_output(NS(id, "table"))
+      plotly::plotlyOutput(NS(id, "biplot")),
+      gt::gt_output(NS(id, "table"))
     )
   )
 }
@@ -181,7 +180,7 @@ pcaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
     # Perform PCA on 'Run'
     pcaobj <- reactive({
-      show_alert(
+      shinyWidgets::show_alert(
         title = "Performing PCA",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
@@ -190,17 +189,17 @@ pcaServer <- function(id, se, keep) {
 
       # Select the relevant data based on selected IDs and features
       keep_rows <- switch(input$features,
-        gene = rowData(se)$feature_type == "Gene",
-        TE = rowData(se)$feature_type == "TE",
+        gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
+        TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
       )
 
       filtered <- se[keep_rows, keep()]
-      df <- data.frame(colData(filtered))
+      df <- data.frame(SummarizedExperiment::colData(filtered))
       m <- switch(input$dataset,
-        lfc = assay(filtered, "logFC"),
-        p = assay(filtered, "P.Value"),
-        z = assay(filtered, "z")
+        lfc = SummarizedExperiment::assay(filtered, "logFC"),
+        p = SummarizedExperiment::assay(filtered, "P.Value"),
+        z = SummarizedExperiment::assay(filtered, "z")
       )
 
       # Use only complete cases if selected
@@ -211,15 +210,19 @@ pcaServer <- function(id, se, keep) {
 
       # Remove zero-variance features to avoid PCA failing
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[DelayedMatrixStats::rowVars(m, useNames = FALSE) != 0, ]
+        m <- m[DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE) != 0, ]
+      } else {
+        v <- DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE)
+        o <- order(v, decreasing=TRUE)
+        m <- head(m[o, ], n = max(1, ncol(m) * (1 - input$removeVar)))
       }
 
-      # Select the PCA algoritm
+      # Select the PCA algorithm
       algo <- switch(input$algorithm,
-        fast = FastAutoParam(),
-        irlba = IrlbaParam(),
-        random = RandomParam(),
-        exact = ExactParam()
+        fast = BiocSingular::FastAutoParam(),
+        irlba = BiocSingular::IrlbaParam(),
+        random = BiocSingular::RandomParam(),
+        exact = BiocSingular::ExactParam()
       )
 
       # Attempt PCA computation
@@ -230,7 +233,6 @@ pcaServer <- function(id, se, keep) {
             metadata = df,
             center = input$center,
             scale = input$scale,
-            removeVar = if (is.na(input$removeVar)) NULL else input$removeVar,
             rank = min(c(input$rank, ncol(m), nrow(m))),
             BSPARAM = algo
           )
@@ -246,11 +248,11 @@ pcaServer <- function(id, se, keep) {
       )
 
       if (is.null(result)) {
-        closeSweetAlert()
+        shinyWidgets::closeSweetAlert()
         validate("Computation failed! Adjust inputs and try again.")
       }
 
-      closeSweetAlert()
+      shinyWidgets::closeSweetAlert()
       return(result)
     }) |> bindEvent(input$run)
 
@@ -264,18 +266,18 @@ pcaServer <- function(id, se, keep) {
       }
     })
 
-    output$table <- render_gt({
-      d <- event_data("plotly_selected")
+    output$table <- gt::render_gt({
+      d <- plotly::event_data("plotly_selected")
       df <- pcaobj()$metadata
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
 
       df |>
-        gt() |>
-        cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
-        cols_move(c(tissue, disease), c(cell_line)) |>
-        cols_label(
+        gt::gt() |>
+        gt::cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
+        gt::cols_move(c(tissue, disease), c(cell_line)) |>
+        gt::cols_label(
           .list = c(
             "id" = "ID",
             "experiment" = "BioProject ID",
@@ -290,15 +292,15 @@ pcaServer <- function(id, se, keep) {
             "disease" = "Disease"
           )
         ) |>
-        cols_width(
+        gt::cols_width(
           desc ~ px(450),
           contrast ~ px(300),
           experiment ~ px(150)
         ) |>
-        tab_header(
+        gt::tab_header(
           title = gt::md("**Selected PC Data**")
         ) |>
-        opt_interactive(use_compact_mode = TRUE)
+        gt::opt_interactive(use_compact_mode = TRUE)
     })
   })
 }
