@@ -99,7 +99,7 @@ umapUI <- function(id) {
       numericInput(
         NS(id, "removeVar"),
         label = "Remove proportion low variance features",
-        value = NA,
+        value = 0.9,
         min = 0,
         max = 1,
         step = 0.1
