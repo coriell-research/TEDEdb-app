@@ -7,7 +7,7 @@ metaUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "method"),
         label = "Combination Method",
         choices = c(
@@ -16,7 +16,7 @@ metaUI <- function(id) {
         ),
         selected = "Wilkinson"
       ),
-      awesomeCheckbox(
+      shinyWidgets::awesomeCheckbox(
         NS(id, "logp"),
         label = "Log Transform P-Values?",
         value = TRUE,
@@ -38,7 +38,7 @@ metaUI <- function(id) {
         max = 1,
         step = 0.1
       ),
-      actionBttn(
+      shinyWidgets::actionBttn(
         NS(id, "run"),
         label = "Run Meta-Analysis",
         style = "material-flat",
@@ -47,7 +47,7 @@ metaUI <- function(id) {
       downloadButton(NS(id, "download"))
     ),
     mainPanel(
-      dropdownButton(
+      shinyWidgets::dropdownButton(
         tags$h3("Meta-Volcano parameters:"),
         selectInput(
           NS(id, "x"),
@@ -64,8 +64,8 @@ metaUI <- function(id) {
         status = "danger",
         icon = icon("gear")
       ),
-      plotlyOutput(NS(id, "metavolcano")),
-      gt_output(NS(id, "table"))
+      plotly::plotlyOutput(NS(id, "metavolcano")),
+      gt::gt_output(NS(id, "table"))
     )
   )
 }
@@ -73,7 +73,7 @@ metaUI <- function(id) {
 metaServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
-      show_alert(
+      shinyWidgets::show_alert(
         title = "Processing Meta-Analysis",
         text = "Please Wait...\nPlots may take additional time to render",
         closeOnClickOutside = FALSE,
@@ -82,14 +82,12 @@ metaServer <- function(id, se, keep) {
       filtered <- se[, keep()]
       
       # Impute missing values for testing
-      assay(filtered, "P.Value")[is.na(assay(filtered, "P.Value"))] <- 1
-      assay(filtered, "logFC")[is.na(assay(filtered, "logFC"))] <- 0
+      SummarizedExperiment::assay(filtered, "P.Value")[is.na(SummarizedExperiment::assay(filtered, "P.Value"))] <- 1
+      SummarizedExperiment::assay(filtered, "logFC")[is.na(SummarizedExperiment::assay(filtered, "logFC"))] <- 0
 
       selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
-        SummarizedExperiment::assay(filtered, "logp") <- log(
-          SummarizedExperiment::assay(filtered, "P.Value")
-        )
+        SummarizedExperiment::assay(filtered, "logp") <- log(SummarizedExperiment::assay(filtered, "P.Value"))
         selected_assay <- "logp"
       }
 
@@ -135,13 +133,13 @@ metaServer <- function(id, se, keep) {
       )
 
       if (is.null(result)) {
-        closeSweetAlert()
+        shinyWidgets::closeSweetAlert()
         validate("Computation failed! Adjust inputs and try again.")
       }
 
       # Rescale log-transformed results back to original scale
       if (isTRUE(input$logp)) {
-        res[, Combined.Pval := exp(Combined.Pval)]
+        res[, `:=`(Combined.Pval = exp(Combined.Pval), Rep.Pval = exp(Rep.Pval))]
       }
 
       # Drop values that could not be calculated
@@ -164,12 +162,13 @@ metaServer <- function(id, se, keep) {
         closeButton = TRUE
       )
 
-      closeSweetAlert()
+      shinyWidgets::closeSweetAlert()
       return(res)
+      
     }) |> bindEvent(input$run)
 
     # Show the metavolcano
-    output$metavolcano <- renderPlotly({
+    output$metavolcano <- plotly::renderPlotly({
       plotly::plot_ly(
         colors = c("up" = "red2", "down" = "blue2", "mixed" = "purple2")
       ) |>
@@ -220,20 +219,22 @@ metaServer <- function(id, se, keep) {
     })
 
     # Show results in table
-    output$table <- render_gt({
-      d <- event_data("plotly_selected")
+    output$table <- gt::render_gt({
+      d <- plotly::event_data("plotly_selected")
       df <- data()
       if (!is.null(d)) {
         df <- df[Feature %chin% d$customdata]
       }
 
       df |>
-        gt() |>
-        fmt_number(columns = c(Rep.logFC), decimals = 2) |>
-        tab_header(
-          title = gt::md("**Meta-Significant Features**")
-        ) |>
-        opt_interactive(use_compact_mode = TRUE)
+        gt::gt() |>
+        gt::fmt_number(
+          columns = c("Rep.logFC", "Median.logFC", 
+                      "Mean.logFC", "Min.logFC", "Max.logFC"), 
+          decimals = 2) |>
+        gt::fmt_scientific(columns = c("Combined.Pval", "Rep.Pval")) |> 
+        gt::tab_header(title = gt::md("**Meta-Significant Features**")) |>
+        gt::opt_interactive(use_compact_mode = TRUE)
     })
 
     output$download <- downloadHandler(
