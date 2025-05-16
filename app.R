@@ -1,23 +1,6 @@
 suppressPackageStartupMessages(library(shiny))
-suppressPackageStartupMessages(library(shinythemes))
-suppressPackageStartupMessages(library(shinyWidgets))
-suppressPackageStartupMessages(library(coriell))
 suppressPackageStartupMessages(library(data.table))
-suppressPackageStartupMessages(library(ggplot2))
-suppressPackageStartupMessages(library(plotly))
-suppressPackageStartupMessages(library(gt))
 suppressPackageStartupMessages(library(SummarizedExperiment))
-suppressPackageStartupMessages(library(HDF5Array))
-suppressPackageStartupMessages(library(DelayedMatrixStats))
-suppressPackageStartupMessages(library(PCAtools))
-suppressPackageStartupMessages(library(BiocSingular))
-suppressPackageStartupMessages(library(fgsea))
-suppressPackageStartupMessages(library(clusterProfiler))
-suppressPackageStartupMessages(library(org.Hs.eg.db))
-suppressPackageStartupMessages(library(ComplexHeatmap))
-suppressPackageStartupMessages(library(matrixStats))
-suppressPackageStartupMessages(library(umap))
-suppressPackageStartupMessages(library(metapod))
 
 # Load modules
 source("mod-selectIds.R")
@@ -28,21 +11,24 @@ source("mod-ranking.R")
 source("mod-de.R")
 source("mod-gsea.R")
 source("mod-overrep.R")
-source("mod-upset.R")
 
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
-se <- loadHDF5SummarizedExperiment("data/se_hdf5")
+se <- HDF5Array::loadHDF5SummarizedExperiment("data/se_hdf5")
 pathways <- readRDS("data/pathways.rds")
-pathway_dt <- readRDS("data/pathway_dt.rds")
-setkey(pathway_dt, Name)
+pathway_dt <- data.table::fread(
+  "data/pathway_dt.tsv.gz", 
+  sep = "\t", 
+  colClasses = c("character", "character"), 
+  key = "Name"
+  )
 
 # App ---------------------------------------------------------------------
 
 
 ui <- navbarPage(
   "TEDEdb App",
-  theme = shinytheme("yeti"),
+  theme = shinythemes::shinytheme("yeti"),
   tabPanel(
     "Meta-Analysis",
     tabsetPanel(
@@ -81,10 +67,6 @@ ui <- navbarPage(
     overrepUI("overrep", choices)
   ),
   tabPanel(
-    "Sample vs. Sample",
-    upsetUI("upset", choices)
-  ),
-  tabPanel(
     "About",
     htmltools::includeMarkdown("about.md")
   )
@@ -99,7 +81,6 @@ server <- function(input, output, session) {
   deServer("de", se)
   gseaServer("gsea", se, pathways, pathway_dt)
   overrepServer("overrep", se)
-  upsetServer("upset", se)
 }
 
 shinyApp(ui, server)
