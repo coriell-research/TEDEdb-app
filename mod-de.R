@@ -8,7 +8,7 @@ deUI <- function(id, choice_list) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      awesomeRadio(
+      shinyWidgets::awesomeRadio(
         NS(id, "features"),
         label = "Select features",
         choices = c(
@@ -18,7 +18,7 @@ deUI <- function(id, choice_list) {
         selected = "gene",
         inline = TRUE
       ),
-      pickerInput(
+      shinyWidgets::pickerInput(
         NS(id, "ID"),
         label = "Select Experimental Contrast",
         choices = choice_list[["id"]],
@@ -55,7 +55,7 @@ deUI <- function(id, choice_list) {
         column(6, plotOutput(NS(id, "ma")))
       ),
       fluidRow(
-        gt_output(NS(id, "table"))
+        gt::gt_output(NS(id, "table"))
       )
     )
   )
@@ -66,19 +66,19 @@ deServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
     data <- reactive({
       keep_rows <- switch(input$features,
-        gene = rowData(se)$feature_type == "Gene",
-        TE = rowData(se)$feature_type == "TE",
+        gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
+        TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
       )
       keep_col <- input$ID
       filtered <- se[keep_rows, keep_col]
 
       # Extract assay data as a data.table for plotting
-      assay_data <- lapply(names(assays(filtered)), \(x) assay(filtered, x))
+      assay_data <- lapply(names(SummarizedExperiment::assays(filtered)), \(x) SummarizedExperiment::assay(filtered, x))
       df <- as.data.frame(do.call(cbind, assay_data))
-      colnames(df) <- names(assays(filtered))
-      setDT(df, keep.rownames = "feature_id")
-      df <- df[!is.na(df$logFC), ]
+      colnames(df) <- names(SummarizedExperiment::assays(filtered))
+      data.table::setDT(df, keep.rownames = "feature_id")
+      df <- df[!is.na(adj.P.Val), ]
       setorder(df, adj.P.Val)
 
       showNotification(
@@ -128,13 +128,13 @@ deServer <- function(id, se) {
     })
     output$ma <- renderPlot(maplot())
 
-    output$table <- render_gt({
+    output$table <- gt::render_gt({
       data() |>
-        gt() |>
-        tab_header(
-          title = gt::md("**Differential Expression Results**")
-        ) |>
-        opt_interactive()
+        gt::gt() |>
+        gt::tab_header(title = gt::md("**Differential Expression Results**")) |>
+        gt::fmt_scientific(columns = c("P.Value", "adj.P.Val")) |> 
+        gt::fmt_number(columns = c("logFC", "AveExpr", "z"), decimals = 2) |> 
+        gt::opt_interactive()
     })
 
     output$download <- downloadHandler(
