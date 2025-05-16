@@ -62,6 +62,7 @@ rankServer <- function(id, se, keep) {
       )
       
       filtered <- se[keep_rows, keep()]
+      # TODO Add mask for now imputed NAs
       lfc_m <- SummarizedExperiment::assay(filtered, "logFC")
       fdr_m <- SummarizedExperiment::assay(filtered, "adj.P.Val")
       
