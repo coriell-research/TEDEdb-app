@@ -172,7 +172,7 @@ umapServer <- function(id, se, keep) {
     # Perform UMAP with selected parameters and data
     udata <- reactive({
       
-      show_alert(
+      shinyWidgets::show_alert(
         title = "Performing UMAP",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
