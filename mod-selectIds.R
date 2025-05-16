@@ -6,7 +6,7 @@
 # generic pickerInput creator
 pick <- function(id, uid, ulabel, choice_list, multi = TRUE, size = 10,
                  live = TRUE, action = TRUE) {
-  pickerInput(
+  shinyWidgets::pickerInput(
     NS(id, uid),
     ulabel,
     choices = choice_list[[uid]],
@@ -48,7 +48,7 @@ selectIdUI <- function(id, choice_list) {
 # Display metadata data of selections and return vector of selected IDs
 selectIdServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
-    df <- data.frame(colData(se))
+    df <- data.frame(SummarizedExperiment::colData(se))
     selected <- reactive({
       subset(
         df,
@@ -68,10 +68,10 @@ selectIdServer <- function(id, se) {
     
     output$table <- gt::render_gt({
       selected() |> 
-        gt() |> 
-        cols_hide(columns = c(id, batch, mutation, comment)) |>
-        cols_move(c(tissue, disease), c(cell_line)) |> 
-        cols_label(
+        gt::gt() |> 
+        gt::cols_hide(columns = c(id, batch, mutation, comment)) |>
+        gt::cols_move(c(tissue, disease), c(cell_line)) |> 
+        gt::cols_label(
           .list = c(
             "id" = "ID",
             "experiment" = "BioProject ID",
@@ -87,15 +87,15 @@ selectIdServer <- function(id, se) {
             "outlier_flags" = "Outlier Flag(s)"
           )
         ) |> 
-        cols_width(
+        gt::cols_width(
           desc ~ px(450),
           contrast ~ px(300),
           experiment ~ px(150)
         ) |> 
-        tab_header(
+        gt::tab_header(
           title = gt::md("**Selected Data for Meta-Analysis**")
         ) |> 
-        opt_interactive(use_compact_mode = TRUE)
+        gt::opt_interactive(use_compact_mode = TRUE)
     })
     
     output$download <- downloadHandler(

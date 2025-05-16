@@ -75,7 +75,7 @@ deServer <- function(id, se) {
 
       # Extract assay data as a data.table for plotting
       assay_data <- lapply(names(SummarizedExperiment::assays(filtered)), \(x) SummarizedExperiment::assay(filtered, x))
-      df <- as.data.frame(do.call(cbind, assay_data))
+      df <- as.data.frame(do.call(SummarizedExperiment::cbind, assay_data))
       colnames(df) <- names(SummarizedExperiment::assays(filtered))
       data.table::setDT(df, keep.rownames = "feature_id")
       df <- df[!is.na(adj.P.Val), ]

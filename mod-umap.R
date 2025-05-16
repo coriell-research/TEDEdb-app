@@ -188,7 +188,7 @@ umapServer <- function(id, se, keep) {
       )
       
       filtered <- se[keep_rows, keep()]
-      df <- data.frame(colData(filtered))
+      df <- data.frame(SummarizedExperiment::colData(filtered))
       m <- switch(
         input$dataset,
         lfc = SummarizedExperiment::assay(filtered, "logFC"),

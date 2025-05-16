@@ -257,7 +257,7 @@ pcaServer <- function(id, se, keep) {
     }) |> bindEvent(input$run)
 
     # Display a biplot of the PCA results
-    output$biplot <- renderPlotly({
+    output$biplot <- plotly::renderPlotly({
       b <- plotBiplot(pcaobj(), x = input$x, y = input$y, col = input$col)
       if (isTRUE(input$legend)) {
         b |> plotly::layout(showlegend = TRUE)

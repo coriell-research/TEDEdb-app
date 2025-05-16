@@ -87,7 +87,7 @@ rankServer <- function(id, se, keep) {
                 Total = NULL)]
       
       # Add on metadata columns and reorder by most dysregulated
-      dt <- data.table::as.data.table(cbind(dt, data.frame(colData(filtered))))
+      dt <- data.table::as.data.table(cbind(dt, data.frame(SummarizedExperiment::colData(filtered))))
       data.table::setorder(dt, Pct_non)
       data.table::setcolorder(dt, c("experiment", "contrast", "Pct_up", "Pct_down", "Pct_non"))
       

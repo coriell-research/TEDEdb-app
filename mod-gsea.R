@@ -69,7 +69,7 @@ gseaUI <- function(id, choice_list, pathway_names) {
         max = Inf,
         min = 10
       ),
-      actionBttn(
+      shinyWidgets::actionBttn(
         NS(id, "run"),
         label = "Run GSEA",
         style = "material-flat",
@@ -114,8 +114,8 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       )
 
       # Subset for only genes
-      filtered <- se[rowData(se)$feature_type == "Gene", input$ID]
-      z_stats <- assay(filtered, "z")[, 1]
+      filtered <- se[SummarizedExperiment::rowData(se)$feature_type == "Gene", input$ID]
+      z_stats <- SummarizedExperiment::assay(filtered, "z")[, 1]
       names(z_stats) <- rownames(filtered)
       z_stats <- z_stats[!is.na(z_stats)]
 
