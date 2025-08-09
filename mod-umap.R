@@ -198,7 +198,7 @@ umapServer <- function(id, se, keep) {
       
       # Use only complete cases if selected
       if (isTRUE(input$complete)) {
-        has_missing <- DelayedMatrixStats::rowAnyNAs(assay(filtered, "P.Value"))
+        has_missing <- DelayedMatrixStats::rowAnyNAs(SummarizedExperiment::assay(filtered, "P.Value"))
         m <- m[!has_missing, ]
       }
       
