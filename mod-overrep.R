@@ -165,7 +165,7 @@ overrepServer <- function(id, se) {
 
       # Select sample data and remove NA measurements
       filtered <- se[SummarizedExperiment::rowData(se)$feature_type == "Gene", input$ID]
-      assay_data <- lapply(c("adj.P.Val", "logFC"), \(x) assay(filtered, x))
+      assay_data <- lapply(c("adj.P.Val", "logFC"), \(x) as.matrix(SummarizedExperiment::assay(filtered, x)))
       df <- as.data.frame(do.call(cbind, assay_data))
       colnames(df) <- c("adj.P.Val", "logFC")
       data.table::setDT(df, keep.rownames = "feature_id")
