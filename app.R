@@ -14,7 +14,7 @@ source("mod-overrep.R")
 # Load global data
 choices <- readRDS("data/select-inputs.rds")
 se <- HDF5Array::loadHDF5SummarizedExperiment("data/se_hdf5")
-DelayedArray::setAutoBlockSize(50e6)
+DelayedArray::setAutoBlockSize(250e6)
 
 pathways <- readRDS("data/pathways.rds")
 pathway_dt <- data.table::fread(
