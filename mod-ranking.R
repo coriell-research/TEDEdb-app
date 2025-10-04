@@ -98,8 +98,8 @@ rankServer <- function(id, se, keep) {
     output$table <- gt::render_gt({
       data() |> 
         gt::gt() |> 
-        gt::cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
-        gt::cols_move(c(tissue, disease), c(cell_line)) |> 
+        gt::cols_hide(columns = c(id, batch, mutation, comment, description)) |>
+        gt::cols_move(c(sample_collection_site, oncotree_primary_disease), c(cell_line)) |> 
         gt::cols_label(
           .list = c(
             "Pct_up" = "Pct. Up",
@@ -115,10 +115,10 @@ rankServer <- function(id, se, keep) {
             "drug" = "Drug",
             "dose" = "Dose",
             "time_hr" = "Time (hr)",
-            "desc" = "Description",
+            "description" = "Description",
             "epigenetic_class" = "Epigenetic Class",
-            "tissue" = "Tissue",
-            "disease" = "Disease"
+            "sample_collection_site" = "Collection Site",
+            "oncotree_primary_disease" = "Primary Disease"
           )
         ) |> 
         gt::fmt_percent(
