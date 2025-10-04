@@ -30,8 +30,8 @@ plotUmap <- function(df, col) {
       "Contrast:", contrast, "\n",
       "BioProject ID:", experiment, "\n",
       "Epigenetic Class:", epigenetic_class, "\n",
-      "Tissue:", tissue, "\n",
-      "Disease:", disease
+      "Collection Site:", sample_collection_site, "\n",
+      "Primary Disease:", oncotree_primary_disease
     ),
     type = "scatter",
     mode = "markers"
@@ -149,9 +149,9 @@ umapUI <- function(id) {
           label = "Color By",
           choices = c(
             "Epigenetic Class" = "epigenetic_class",
-            "Tissue" = "tissue",
+            "Collection Site" = "sample_collection_site",
             "Drug" = "drug",
-            "Disease" = "disease",
+            "Primary Disease" = "oncotree_primary_disease",
             "BioProject" = "experiment"
           )
         ),
@@ -267,8 +267,8 @@ umapServer <- function(id, se, keep) {
 
       df |>
         gt::gt() |>
-        gt::cols_hide(columns = c(id, batch, mutation, comment, desc)) |>
-        gt::cols_move(c(tissue, disease), c(cell_line)) |>
+        gt::cols_hide(columns = c(id, batch, mutation, comment, description)) |>
+        gt::cols_move(c(sample_collection_site, oncotree_primary_disease), c(cell_line)) |>
         gt::cols_label(
           .list = c(
             "id" = "ID",
@@ -278,10 +278,10 @@ umapServer <- function(id, se, keep) {
             "drug" = "Drug",
             "dose" = "Dose",
             "time_hr" = "Time (hr)",
-            "desc" = "Description",
+            "description" = "Description",
             "epigenetic_class" = "Epigenetic Class",
-            "tissue" = "Tissue",
-            "disease" = "Disease"
+            "sample_collection_site" = "Collection Site",
+            "oncotree_primary_disease" = "Primary Disease"
           )
         ) |>
         gt::fmt_number(
@@ -290,7 +290,7 @@ umapServer <- function(id, se, keep) {
           use_seps = FALSE
         ) |> 
         gt::cols_width(
-          desc ~ px(450),
+          description ~ px(450),
           contrast ~ px(300),
           experiment ~ px(150)
         ) |>
