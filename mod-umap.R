@@ -90,7 +90,7 @@ umapUI <- function(id) {
       ),
       shinyWidgets::prettyCheckbox(
         NS(id, "complete"),
-        label = "Use complete cases?",
+        label = "Use complete cases",
         value = FALSE,
         icon = icon("check"),
         status = "success",
