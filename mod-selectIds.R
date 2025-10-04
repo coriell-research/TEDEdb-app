@@ -34,8 +34,8 @@ selectIdUI <- function(id, choice_list) {
       pick(id, "drug_class", "Drug Class(es)", choice_list),
       pick(id, "mode_of_action", "Mode of Action", choice_list),
       pick(id, "target", "Target", choice_list),
-      pick(id, "tissue", "Tissue(s)", choice_list),
-      pick(id, "disease", "Disease(s)", choice_list),
+      pick(id, "sample_collection_site", "Collection Site(s)", choice_list),
+      pick(id, "oncotree_primary_disease", "Primary Disease(s)", choice_list),
       pick(id, "outlier_flags", "Outlier Flag(s)", choice_list),
       downloadButton(NS(id, "download"))
     ),
@@ -61,8 +61,8 @@ selectIdServer <- function(id, se) {
         drug_class %in% input$drug_class &
         mode_of_action %in% input$mode_of_action &
         target %in% input$target &
-        tissue %in% input$tissue &
-        disease %in% input$disease
+        sample_collection_site %in% input$sample_collection_site &
+        oncotree_primary_disease %in% input$oncotree_primary_disease
       )
     })
     
@@ -70,7 +70,7 @@ selectIdServer <- function(id, se) {
       selected() |> 
         gt::gt() |> 
         gt::cols_hide(columns = c(id, batch, mutation, comment)) |>
-        gt::cols_move(c(tissue, disease), c(cell_line)) |> 
+        gt::cols_move(c(sample_collection_site, oncotree_primary_disease), c(cell_line)) |> 
         gt::cols_label(
           .list = c(
             "id" = "ID",
@@ -80,15 +80,15 @@ selectIdServer <- function(id, se) {
             "drug" = "Drug",
             "dose" = "Dose",
             "time_hr" = "Time (hr)",
-            "desc" = "Description",
+            "description" = "Description",
             "epigenetic_class" = "Epigenetic Class",
-            "tissue" = "Tissue",
-            "disease" = "Disease",
+            "sample_collection_site" = "Sample Collection Site",
+            "oncotree_primary_disease" = "Primary Disease",
             "outlier_flags" = "Outlier Flag(s)"
           )
         ) |> 
         gt::cols_width(
-          desc ~ px(450),
+          description ~ px(450),
           contrast ~ px(300),
           experiment ~ px(150)
         ) |> 
