@@ -133,7 +133,7 @@ deServer <- function(id, se) {
         gt::gt() |>
         gt::tab_header(title = gt::md("**Differential Expression Results**")) |>
         gt::fmt_scientific(columns = c("P.Value", "adj.P.Val")) |> 
-        gt::fmt_number(columns = c("logFC", "AveExpr", "z"), decimals = 2) |> 
+        gt::fmt_number(columns = c("logFC", "AveExpr", "z", "SE"), decimals = 2) |> 
         gt::opt_interactive()
     })
 
