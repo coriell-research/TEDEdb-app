@@ -62,7 +62,7 @@ rankServer <- function(id, se, keep) {
       )
       
       filtered <- se[keep_rows, keep()]
-      # TODO Add mask for now imputed NAs
+
       lfc_m <- SummarizedExperiment::assay(filtered, "logFC")
       fdr_m <- SummarizedExperiment::assay(filtered, "adj.P.Val")
       
@@ -70,8 +70,9 @@ rankServer <- function(id, se, keep) {
       up_m <- lfc_m > input$lfc & fdr_m < input$fdr
       down_m <- lfc_m < input$lfc & fdr_m < input$fdr
       
-      # Assays contain NA values at same positions
-      total <- DelayedArray::colSums(!is.na(lfc_m), na.rm = TRUE)
+      # Assays contain NA values at same positions and can be used to get total 
+      # assayed number of features
+      total <- DelayedArray::colSums(!is.na(SummarizedExperiment::assay(filtered, "AveExpr")))
       
       # Collect DE results for all contrasts
       dt <- data.table::data.table(
