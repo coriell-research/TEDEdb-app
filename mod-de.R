@@ -12,7 +12,8 @@ deUI <- function(id, choice_list) {
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", "Transposable Elements" = "TE",
+          "Genes" = "gene", 
+          "Transposable Elements" = "TE",
           "Both" = "both"
         ),
         selected = "gene",
@@ -68,7 +69,7 @@ deServer <- function(id, se) {
       keep_rows <- switch(input$features,
         gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
         TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
-        both = rep(TRUE, nrow(se))
+        both = SummarizedExperiment::rowData(se)$feature_type %in% c("Gene", "TE")
       )
       keep_col <- input$ID
       filtered <- se[keep_rows, keep_col]
