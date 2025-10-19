@@ -56,7 +56,7 @@ selectIdServer <- function(id, se) {
     selected_df <- reactive({
       se_obj <- filtered_se()
       if (ncol(se_obj) > 0) {
-        as.data.frame(colData(se_obj))
+        as.data.frame(SummarizedExperiment::colData(se_obj))
       } else {
         data.frame()
       }
