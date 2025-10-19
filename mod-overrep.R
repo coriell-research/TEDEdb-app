@@ -3,22 +3,16 @@
 ##
 ## ----------------------------------------------------------------------------
 
-overrepUI <- function(id, choice_list) {
+overrepUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      shinyWidgets::pickerInput(
+      selectizeInput(
         NS(id, "ID"),
-        label = "Experimental Contrast",
-        choices = choice_list[["id"]],
-        selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+        label = "Select Experimental Contrast",
+        choices = NULL,
         multiple = FALSE,
-        options = list(
-          title = "Select Experiment",
-          size = 10,
-          `live-search` = TRUE,
-          `actions-box` = TRUE
-        )
+        options = list(placeholder = "e.g. Decitabine vs Control")
       ),
       shinyWidgets::awesomeRadio(
         NS(id, "ontology"),
@@ -155,7 +149,15 @@ overrepUI <- function(id, choice_list) {
 # Display metadata data of selections and return vector of selected IDs
 overrepServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
+    
+    choices <- sort(unique(se[["id"]]))
+    updateSelectizeInput(session, "ID", choices = choices, 
+                         selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
+                         server = TRUE)
+    
     data <- reactive({
+      req(input$ID)
+      
       shinyWidgets::show_alert(
         title = "Performing Gene Ontology Analysis",
         text = "Please Wait...",
@@ -279,15 +281,18 @@ overrepServer <- function(id, se) {
       },
       content = function(file) {
         tmp <- tempdir()
-        setwd(tmp)
-
+        
         data_up <- data.frame(data()[["up"]])
         data_down <- data.frame(data()[["down"]])
-        data.table::fwrite(data_up, "data_up-regulated.tsv", sep = "\t")
-        data.table::fwrite(data_down, "data_down-regulated.tsv", sep = "\t")
-        files <- c("data_up-regulated.tsv", "data_down-regulated.tsv")
+        
+        up_path <- file.path(tmp, "data_up-regulated.tsv")
+        down_path <- file.path(tmp, "data_down-regulated.tsv")
+        
+        data.table::fwrite(data_up, up_path, sep = "\t")
+        data.table::fwrite(data_down, down_path, sep = "\t")
+        files <- c(up_path, down_path)
 
-        zip(zipfile = file, files = files)
+        zip(zipfile = file, files = files, flags = "-j")
       },
       contentType = "application/zip"
     )
