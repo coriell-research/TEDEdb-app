@@ -4,7 +4,7 @@
 ## ----------------------------------------------------------------------------
 
 # User interface for ID selection
-deUI <- function(id, choice_list) {
+deUI <- function(id) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
@@ -19,18 +19,12 @@ deUI <- function(id, choice_list) {
         selected = "gene",
         inline = TRUE
       ),
-      shinyWidgets::pickerInput(
+      selectizeInput(
         NS(id, "ID"),
         label = "Select Experimental Contrast",
-        choices = choice_list[["id"]],
-        selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+        choices = NULL,
         multiple = FALSE,
-        options = list(
-          title = "Select Experiment",
-          size = 10,
-          `live-search` = TRUE,
-          `actions-box` = TRUE
-        )
+        options = list(placeholder = "e.g. Decitabine vs Control")
       ),
       numericInput(
         NS(id, "fdr"),
@@ -65,7 +59,15 @@ deUI <- function(id, choice_list) {
 # Display metadata data of selections and return vector of selected IDs
 deServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
+    
+    choices <- sort(unique(se[["id"]]))
+    updateSelectizeInput(session, "ID", choices = choices, 
+                         selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
+                         server = TRUE)
+    
     data <- reactive({
+      req(input$ID)
+      
       keep_rows <- switch(input$features,
         gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
         TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
@@ -130,7 +132,16 @@ deServer <- function(id, se) {
     output$ma <- renderPlot(maplot())
 
     output$table <- gt::render_gt({
-      data() |>
+      df <- data()
+      
+      validate(
+        need(
+          is.data.frame(df) && nrow(df) > 0,
+          "Please select an experimental contrast to view results."
+        )
+      )
+      
+      df |>
         gt::gt() |>
         gt::tab_header(title = gt::md("**Differential Expression Results**")) |>
         gt::fmt_scientific(columns = c("P.Value", "adj.P.Val")) |> 
@@ -144,14 +155,17 @@ deServer <- function(id, se) {
       },
       content = function(file) {
         tmp <- tempdir()
-        setwd(tmp)
-
-        data.table::fwrite(data(), "data.tsv", sep = "\t")
-        ggsave("volcano-plot.pdf", plot = vplot(), device = "pdf", width = 11, height = 7)
-        ggsave("ma-plot.pdf", plot = maplot(), device = "pdf", width = 11, height = 7)
-        files <- c("data.tsv", "volcano-plot.pdf", "ma-plot.pdf")
-
-        zip(zipfile = file, files = files)
+        
+        data_path <- file.path(tmp, "data.tsv")
+        volcano_path <- file.path(tmp, "volcano-plot.pdf")
+        ma_path <- file.path(tmp, "ma-plot.pdf")
+        
+        data.table::fwrite(data(), data_path, sep = "\t")
+        ggplot2::ggsave(volcano_path, plot = vplot(), device = "pdf", width = 8, height = 6)
+        ggplot2::ggsave(ma_path, plot = maplot(), device = "pdf", width = 8, height = 6)
+        files <- c(data_path, volcano_path, ma_path)
+        
+        zip(zipfile = file, files = files, flags = "-j")
       },
       contentType = "application/zip"
     )
