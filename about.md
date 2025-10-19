@@ -1,4 +1,4 @@
-## GEO RNA-seq Cancer Meta-analysis
+# GEO RNA-seq Cancer Meta-analysis
 
 This app integrates differential expression (DE) results generated from a uniform
 processing pipeline into an interactive meta-analysis framework. The app allows 
@@ -24,7 +24,7 @@ By default, every contrast in the database is used.
 PCA is performed on data from the selected contrasts. The user can opt to 
 perform PCA on either the genes alone, TEs alone, or both. The input data values 
 for PCA are one of the values computed from the differential expression analysis 
-for a particular feature, e.g. logFC, t-statistic, P-value, or z-statistic. 
+for a particular feature, e.g. logFC, P-value, or z-statistic. 
 Using these values for dimensionality reduction allows for the exploration of
 patterns of differential expression across disparate treatments, cell lines, 
 experiments, etc. 
@@ -122,7 +122,7 @@ those contrasts where expression is most dysregulated.
 The differential expression tab enables the exploration of individual 
 experiment-level DE results as volcano or MA plots. The user can select features
 (genes, TEs, or both) and create volcano plots of the differential expression
-results for any contrast. Users can adjsut the FDR cutoff and logFC thresholds 
+results for any contrast. Users can adjust the FDR cutoff and logFC thresholds 
 used in the plots. A table of differential expression results for the selected
 contrast is displayed below the plots.
 
@@ -152,12 +152,3 @@ significantly enriched terms is displayed for each gene set
 NOTE: GO is performed only on the genes from the differential expression 
 analysis. the background gene set used is comprised of all genes observed in 
 that particular study.
-
-## Sample vs Sample
-
-The Sample-vs-Sample tab allows users to directly compare the number and 
-direction of shared dysregulated features across collections of contrasts. Users 
-can select the FDR cutoff used to determine significance. Significant feature for
-each contrast are then displayed as an UpSet plot via `ComplexHeatmap::UpSet()`.
-The number of shared features depending on the combination set mode for each 
-pairwise combination is displayed on the plot. 
