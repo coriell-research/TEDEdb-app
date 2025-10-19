@@ -12,9 +12,8 @@ source("mod-gsea.R")
 source("mod-overrep.R")
 
 # Load global data
-choices <- readRDS("data/select-inputs.rds")
 se <- HDF5Array::loadHDF5SummarizedExperiment("data/se_hdf5")
-DelayedArray::setAutoBlockSize(50e6)
+DelayedArray::setAutoBlockSize(250e6)
 
 pathways <- readRDS("data/pathways.rds")
 pathway_dt <- data.table::fread(
@@ -35,7 +34,7 @@ ui <- navbarPage(
     tabsetPanel(
       tabPanel(
         "1. Data Selection",
-        selectIdUI("ids", choices)
+        selectIdUI("ids")
       ),
       tabPanel(
         "2. PCA",
@@ -57,15 +56,15 @@ ui <- navbarPage(
   ),
   tabPanel(
     "Differential Expression",
-    deUI("de", choices)
+    deUI("de")
   ),
   tabPanel(
     "GSEA",
-    gseaUI("gsea", choices, pathway_dt[, Name])
+    gseaUI("gsea", pathway_dt[, Name])
   ),
   tabPanel(
     "Over-representation",
-    overrepUI("overrep", choices)
+    overrepUI("overrep")
   ),
   tabPanel(
     "About",
