@@ -4,22 +4,16 @@
 ##
 ## ----------------------------------------------------------------------------
 
-gseaUI <- function(id, choice_list, pathway_names) {
+gseaUI <- function(id, pathway_names) {
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      shinyWidgets::pickerInput(
+      selectizeInput(
         NS(id, "ID"),
-        label = "Experimental Contrast",
-        choices = choice_list[["id"]],
-        selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+        label = "Select Experimental Contrast",
+        choices = NULL,
         multiple = FALSE,
-        options = list(
-          title = "Select Experiment",
-          size = 10,
-          `live-search` = TRUE,
-          `actions-box` = TRUE
-        )
+        options = list(placeholder = "e.g. Decitabine vs Control")
       ),
       shinyWidgets::pickerInput(
         NS(id, "pathway"),
@@ -105,7 +99,15 @@ gseaUI <- function(id, choice_list, pathway_names) {
 
 gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
+    
+    choices <- sort(unique(se[["id"]]))
+    updateSelectizeInput(session, "ID", choices = choices, 
+                         selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
+                         server = TRUE)
+    
     data <- reactive({
+      req(input$ID)
+      
       shinyWidgets::show_alert(
         title = "Performing GSEA",
         text = "Please Wait...",
@@ -151,7 +153,16 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
 
     # GSEA results table
     output$table <- gt::render_gt({
-      data()[["results"]] |>
+      df <- data()[["results"]]
+      
+      validate(
+        need(
+          is.data.frame(df) && nrow(df) > 0,
+          "Please select an experimental contrast to view results."
+        )
+      )
+      
+      df |>
         gt::gt() |>
         gt::fmt_number(columns = c("log2err", "ES", "NES"), decimals = 1) |> 
         gt::fmt_scientific(columns = c("pval", "padj")) |> 
@@ -166,14 +177,16 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       },
       content = function(file) {
         tmp <- tempdir()
-        setwd(tmp)
+        
+        data_path <- file.path(tmp, "data.tsv")
+        eplot_path <- file.path(tmp, "enrichment-plot.pdf")
+        
+        data.table::fwrite(data()[["results"]], data_path, sep = "\t", sep2 = c("", " ", ""))
+        ggplot2::ggsave(eplot_path, plot = eplot(), device = "pdf", width = 8, height = 6)
 
-        data.table::fwrite(data()[["results"]], "data.tsv", sep = "\t", sep2 = c("", " ", ""))
-        ggsave("enrichment-plot.pdf", plot = eplot(), device = "pdf", width = 11, height = 7)
+        files <- c(data_path, eplot_path)
 
-        files <- c("data.tsv", "enrichment-plot.pdf")
-
-        zip(zipfile = file, files = files)
+        zip(zipfile = file, files = files, flags = "-j")
       },
       contentType = "application/zip"
     )
