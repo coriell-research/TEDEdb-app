@@ -11,8 +11,13 @@ metaUI <- function(id) {
         NS(id, "method"),
         label = "Combination Method",
         choices = c(
-          "Berger", "Fisher", "HolmMin", "Pearson", "Simes",
-          "Stouffer", "Wilkinson"
+          "Berger",
+          "Fisher",
+          "HolmMin",
+          "Pearson",
+          "Simes",
+          "Stouffer",
+          "Wilkinson"
         ),
         selected = "Wilkinson"
       ),
@@ -52,7 +57,13 @@ metaUI <- function(id) {
         selectInput(
           NS(id, "x"),
           label = "x",
-          choices = c("Rep.logFC", "Median.logFC", "Mean.logFC", "Min.logFC", "Max.logFC"),
+          choices = c(
+            "Rep.logFC",
+            "Median.logFC",
+            "Mean.logFC",
+            "Min.logFC",
+            "Max.logFC"
+          ),
           selected = "Rep.logFC"
         ),
         selectInput(
@@ -65,7 +76,7 @@ metaUI <- function(id) {
         icon = icon("gear")
       ),
       plotly::plotlyOutput(NS(id, "metavolcano")),
-      gt::gt_output(NS(id, "table"))
+      DT::dataTableOutput(NS(id, "table"))
     )
   )
 }
@@ -80,18 +91,28 @@ metaServer <- function(id, se, keep) {
         btn_labels = NA,
       )
       filtered <- se[, keep()]
-      
+
       # Impute missing values for testing
-      SummarizedExperiment::assay(filtered, "P.Value")[is.na(SummarizedExperiment::assay(filtered, "P.Value"))] <- 1
-      SummarizedExperiment::assay(filtered, "logFC")[is.na(SummarizedExperiment::assay(filtered, "logFC"))] <- 0
+      SummarizedExperiment::assay(
+        filtered,
+        "P.Value"
+      )[is.na(SummarizedExperiment::assay(filtered, "P.Value"))] <- 1
+      SummarizedExperiment::assay(
+        filtered,
+        "logFC"
+      )[is.na(SummarizedExperiment::assay(filtered, "logFC"))] <- 0
 
       selected_assay <- "P.Value"
       if (isTRUE(input$logp)) {
-        SummarizedExperiment::assay(filtered, "logp") <- log(SummarizedExperiment::assay(filtered, "P.Value"))
+        SummarizedExperiment::assay(
+          filtered,
+          "logp"
+        ) <- log(SummarizedExperiment::assay(filtered, "P.Value"))
         selected_assay <- "logp"
       }
 
-      method <- switch(input$method,
+      method <- switch(
+        input$method,
         Berger = metapod::parallelBerger,
         Fisher = metapod::parallelFisher,
         HolmMin = metapod::parallelHolmMin,
@@ -139,16 +160,23 @@ metaServer <- function(id, se, keep) {
 
       # Rescale log-transformed results back to original scale
       if (isTRUE(input$logp)) {
-        res[, `:=`(Combined.Pval = exp(Combined.Pval), Rep.Pval = exp(Rep.Pval))]
+        res[, `:=`(
+          Combined.Pval = exp(Combined.Pval),
+          Rep.Pval = exp(Rep.Pval)
+        )]
       }
 
       # Drop values that could not be calculated
       before <- nrow(res)
       res <- res[!is.na(Combined.Pval)][order(Combined.Pval)]
       after <- nrow(res)
-      
+
       showNotification(
-        paste("Removing", before - after, "observations where P-values could not be combined"),
+        paste(
+          "Removing",
+          before - after,
+          "observations where P-values could not be combined"
+        ),
         type = "message",
         duration = 10,
         closeButton = TRUE
@@ -164,8 +192,8 @@ metaServer <- function(id, se, keep) {
 
       shinyWidgets::closeSweetAlert()
       return(res)
-      
-    }) |> bindEvent(input$run)
+    }) |>
+      bindEvent(input$run)
 
     # Show the metavolcano
     output$metavolcano <- plotly::renderPlotly({
@@ -219,22 +247,14 @@ metaServer <- function(id, se, keep) {
     })
 
     # Show results in table
-    output$table <- gt::render_gt({
+    output$table <- DT::renderDataTable({
       d <- plotly::event_data("plotly_selected")
       df <- data()
       if (!is.null(d)) {
         df <- df[Feature %chin% d$customdata]
       }
 
-      df |>
-        gt::gt() |>
-        gt::fmt_number(
-          columns = c("Rep.logFC", "Median.logFC", 
-                      "Mean.logFC", "Min.logFC", "Max.logFC"), 
-          decimals = 2) |>
-        gt::fmt_scientific(columns = c("Combined.Pval", "Rep.Pval")) |> 
-        gt::tab_header(title = gt::md("**Meta-Significant Features**")) |>
-        gt::opt_interactive(use_compact_mode = TRUE)
+      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
     })
 
     output$download <- downloadHandler(

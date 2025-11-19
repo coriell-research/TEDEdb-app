@@ -12,7 +12,7 @@ deUI <- function(id) {
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", 
+          "Genes" = "gene",
           "Transposable Elements" = "TE",
           "Both" = "both"
         ),
@@ -50,7 +50,7 @@ deUI <- function(id) {
         column(6, plotOutput(NS(id, "ma")))
       ),
       fluidRow(
-        gt::gt_output(NS(id, "table"))
+        DT::dataTableOutput(NS(id, "table"))
       )
     )
   )
@@ -59,25 +59,32 @@ deUI <- function(id) {
 # Display metadata data of selections and return vector of selected IDs
 deServer <- function(id, se) {
   moduleServer(id, function(input, output, session) {
-    
     choices <- sort(unique(se[["id"]]))
-    updateSelectizeInput(session, "ID", choices = choices, 
-                         selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
-                         server = TRUE)
-    
+    updateSelectizeInput(
+      session,
+      "ID",
+      choices = choices,
+      selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+      server = TRUE
+    )
+
     data <- reactive({
       req(input$ID)
-      
-      keep_rows <- switch(input$features,
+
+      keep_rows <- switch(
+        input$features,
         gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
         TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
-        both = SummarizedExperiment::rowData(se)$feature_type %in% c("Gene", "TE")
+        both = SummarizedExperiment::rowData(se)$feature_type %in%
+          c("Gene", "TE")
       )
       keep_col <- input$ID
       filtered <- se[keep_rows, keep_col]
 
       # Extract assay data as a data.table for plotting
-      assay_data <- lapply(names(SummarizedExperiment::assays(filtered)), \(x) SummarizedExperiment::assay(filtered, x))
+      assay_data <- lapply(names(SummarizedExperiment::assays(filtered)), \(x) {
+        SummarizedExperiment::assay(filtered, x)
+      })
       df <- as.data.frame(do.call(SummarizedExperiment::cbind, assay_data))
       colnames(df) <- names(SummarizedExperiment::assays(filtered))
       data.table::setDT(df, keep.rownames = "feature_id")
@@ -86,12 +93,14 @@ deServer <- function(id, se) {
 
       showNotification(
         "Creating Volcano Plot...",
-        type = "message", duration = 5,
+        type = "message",
+        duration = 5,
         closeButton = TRUE
       )
       showNotification(
         "Creating MA Plot...",
-        type = "message", duration = 5,
+        type = "message",
+        duration = 5,
         closeButton = TRUE
       )
 
@@ -131,40 +140,51 @@ deServer <- function(id, se) {
     })
     output$ma <- renderPlot(maplot())
 
-    output$table <- gt::render_gt({
+    output$table <- DT::renderDataTable({
       df <- data()
-      
+
       validate(
         need(
           is.data.frame(df) && nrow(df) > 0,
           "Please select an experimental contrast to view results."
         )
       )
-      
-      df |>
-        gt::gt() |>
-        gt::tab_header(title = gt::md("**Differential Expression Results**")) |>
-        gt::fmt_scientific(columns = c("P.Value", "adj.P.Val")) |> 
-        gt::fmt_number(columns = c("logFC", "AveExpr", "z", "SE"), decimals = 2) |> 
-        gt::opt_interactive()
+
+      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
     })
 
     output$download <- downloadHandler(
       filename = function() {
-        paste0("differential-expression_", format(Sys.time(), "%Y-%m-%d"), ".zip")
+        paste0(
+          "differential-expression_",
+          format(Sys.time(), "%Y-%m-%d"),
+          ".zip"
+        )
       },
       content = function(file) {
         tmp <- tempdir()
-        
+
         data_path <- file.path(tmp, "data.tsv")
         volcano_path <- file.path(tmp, "volcano-plot.pdf")
         ma_path <- file.path(tmp, "ma-plot.pdf")
-        
+
         data.table::fwrite(data(), data_path, sep = "\t")
-        ggplot2::ggsave(volcano_path, plot = vplot(), device = "pdf", width = 8, height = 6)
-        ggplot2::ggsave(ma_path, plot = maplot(), device = "pdf", width = 8, height = 6)
+        ggplot2::ggsave(
+          volcano_path,
+          plot = vplot(),
+          device = "pdf",
+          width = 8,
+          height = 6
+        )
+        ggplot2::ggsave(
+          ma_path,
+          plot = maplot(),
+          device = "pdf",
+          width = 8,
+          height = 6
+        )
         files <- c(data_path, volcano_path, ma_path)
-        
+
         zip(zipfile = file, files = files, flags = "-j")
       },
       contentType = "application/zip"

@@ -7,14 +7,24 @@
 plotUmap <- function(df, col) {
   vline <- function(x = 0, color = "black") {
     list(
-      type = "line", y0 = 0, y1 = 1, yref = "paper", x0 = x, x1 = x,
+      type = "line",
+      y0 = 0,
+      y1 = 1,
+      yref = "paper",
+      x0 = x,
+      x1 = x,
       line = list(color = color, dash = "dot")
     )
   }
 
   hline <- function(y = 0, color = "black") {
     list(
-      type = "line", x0 = 0, x1 = 1, xref = "paper", y0 = y, y1 = y,
+      type = "line",
+      x0 = 0,
+      x1 = 1,
+      xref = "paper",
+      y0 = y,
+      y1 = y,
       line = list(color = color, dash = "dot")
     )
   }
@@ -27,11 +37,20 @@ plotUmap <- function(df, col) {
     color = ~ get(col),
     size = 12,
     text = ~ paste(
-      "Contrast:", contrast, "\n",
-      "BioProject ID:", experiment, "\n",
-      "Epigenetic Class:", epigenetic_class, "\n",
-      "Collection Site:", sample_collection_site, "\n",
-      "Primary Disease:", oncotree_primary_disease
+      "Contrast:",
+      contrast,
+      "\n",
+      "BioProject ID:",
+      experiment,
+      "\n",
+      "Epigenetic Class:",
+      epigenetic_class,
+      "\n",
+      "Collection Site:",
+      sample_collection_site,
+      "\n",
+      "Primary Disease:",
+      oncotree_primary_disease
     ),
     type = "scatter",
     mode = "markers"
@@ -54,7 +73,7 @@ umapUI <- function(id) {
         NS(id, "features"),
         label = "Select features",
         choices = c(
-          "Genes" = "gene", 
+          "Genes" = "gene",
           "Transposable Elements" = "TE",
           "Both" = "both"
         ),
@@ -66,7 +85,7 @@ umapUI <- function(id) {
         label = "Select data",
         choices = c(
           "z-statistic" = "z",
-          "logFC" = "lfc", 
+          "logFC" = "lfc",
           "P-value" = "p"
         ),
         selected = "z",
@@ -161,24 +180,22 @@ umapUI <- function(id) {
       ),
       verbatimTextOutput(NS(id, "test")),
       plotly::plotlyOutput(NS(id, "umap")),
-      gt::gt_output(NS(id, "table"))
+      DT::dataTableOutput(NS(id, "table"))
     )
   )
 }
 
 umapServer <- function(id, se, keep) {
   moduleServer(id, function(input, output, session) {
-    
     # Perform UMAP with selected parameters and data
     udata <- reactive({
-      
       shinyWidgets::show_alert(
         title = "Performing UMAP",
         text = "Please Wait...",
         closeOnClickOutside = FALSE,
         btn_labels = NA,
       )
-      
+
       # Select relevant data and features
       keep_rows <- switch(
         input$features,
@@ -186,7 +203,7 @@ umapServer <- function(id, se, keep) {
         TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
       )
-      
+
       filtered <- se[keep_rows, keep()]
       df <- data.frame(SummarizedExperiment::colData(filtered))
       m <- switch(
@@ -195,58 +212,65 @@ umapServer <- function(id, se, keep) {
         p = SummarizedExperiment::assay(filtered, "P.Value"),
         z = SummarizedExperiment::assay(filtered, "z")
       )
-      
+
       # Use only complete cases if selected
       if (isTRUE(input$complete)) {
-        has_missing <- DelayedMatrixStats::rowAnyNAs(SummarizedExperiment::assay(filtered, "P.Value"))
+        has_missing <- DelayedMatrixStats::rowAnyNAs(SummarizedExperiment::assay(
+          filtered,
+          "P.Value"
+        ))
         m <- m[!has_missing, ]
       }
-      
+
       # Remove zero-variance features to avoid PCA failing
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE) != 0, ]
+        m <- m[
+          DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE) != 0,
+        ]
       } else {
         v <- DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE)
-        o <- order(v, decreasing=TRUE)
+        o <- order(v, decreasing = TRUE)
         m <- head(m[o, ], n = max(1, ncol(m) * (1 - input$removeVar)))
       }
-      
+
       # Attempt UMAP calculation
-      result <- tryCatch({
-        
-        pca_res <- PCAtools::pca(
-          m,
-          metadata = df,
-          center = input$center,
-          scale = input$scale,
-          rank = min(c(input$rank, ncol(m), nrow(m))),
-          BSPARAM = BiocSingular::FastAutoParam()
-        )
-        
-        coriell::UMAP(
-          pca_res,
-          n_neighbors = input$neighbors,
-          metric = input$metric,
-          min_dist = input$mindist,
-          n_epochs = input$epochs
-        )}, 
+      result <- tryCatch(
+        {
+          pca_res <- PCAtools::pca(
+            m,
+            metadata = df,
+            center = input$center,
+            scale = input$scale,
+            rank = min(c(input$rank, ncol(m), nrow(m))),
+            BSPARAM = BiocSingular::FastAutoParam()
+          )
+
+          coriell::UMAP(
+            pca_res,
+            n_neighbors = input$neighbors,
+            metric = input$metric,
+            min_dist = input$mindist,
+            n_epochs = input$epochs
+          )
+        },
         error = function(e) {
           return(NULL)
         },
         warning = function(e) {
           return(NULL)
-        })
-      
+        }
+      )
+
       if (is.null(result)) {
         shinyWidgets::closeSweetAlert()
         validate("Computation failed! Adjust inputs and try again.")
       }
-      
+
       shinyWidgets::closeSweetAlert()
-      
+
       return(result)
-      
-    }) |> bindEvent(input$run)
+    }) |>
+      bindEvent(input$run)
 
     # UMAP plot
     output$umap <- plotly::renderPlotly({
@@ -258,46 +282,15 @@ umapServer <- function(id, se, keep) {
       }
     })
 
-    output$table <- gt::render_gt({
+    output$table <- DT::renderDataTable({
       d <- plotly::event_data("plotly_selected")
       df <- udata()
+
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
 
-      df |>
-        gt::gt() |>
-        gt::cols_hide(columns = c(id, batch, mutation, comment, description)) |>
-        gt::cols_move(c(sample_collection_site, oncotree_primary_disease), c(cell_line)) |>
-        gt::cols_label(
-          .list = c(
-            "id" = "ID",
-            "experiment" = "BioProject ID",
-            "contrast" = "Contrast",
-            "cell_line" = "Cell Line",
-            "drug" = "Drug",
-            "dose" = "Dose",
-            "time_hr" = "Time (hr)",
-            "description" = "Description",
-            "epigenetic_class" = "Epigenetic Class",
-            "sample_collection_site" = "Collection Site",
-            "oncotree_primary_disease" = "Primary Disease"
-          )
-        ) |>
-        gt::fmt_number(
-          columns = c("UMAP1", "UMAP2"),
-          decimals = 2,
-          use_seps = FALSE
-        ) |> 
-        gt::cols_width(
-          description ~ px(450),
-          contrast ~ px(300),
-          experiment ~ px(150)
-        ) |>
-        gt::tab_header(
-          title = gt::md("**Selected UMAP Data**")
-        ) |>
-        gt::opt_interactive(use_compact_mode = TRUE)
+      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
     })
   })
 }

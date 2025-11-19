@@ -1,6 +1,6 @@
 ## Perform PCA on the selected sample IDs
 ##
-## 
+##
 ## ----------------------------------------------------------------------------
 
 # Function for plotting PCA results with plotly
@@ -14,14 +14,24 @@ plotBiplot <- function(obj, x, y, col) {
 
   vline <- function(x = 0, color = "black") {
     list(
-      type = "line", y0 = 0, y1 = 1, yref = "paper", x0 = x, x1 = x,
+      type = "line",
+      y0 = 0,
+      y1 = 1,
+      yref = "paper",
+      x0 = x,
+      x1 = x,
       line = list(color = color, dash = "dot")
     )
   }
 
   hline <- function(y = 0, color = "black") {
     list(
-      type = "line", x0 = 0, x1 = 1, xref = "paper", y0 = y, y1 = y,
+      type = "line",
+      x0 = 0,
+      x1 = 1,
+      xref = "paper",
+      y0 = y,
+      y1 = y,
       line = list(color = color, dash = "dot")
     )
   }
@@ -34,11 +44,20 @@ plotBiplot <- function(obj, x, y, col) {
     color = ~ get(col),
     size = 12,
     text = ~ paste(
-      "Contrast:", contrast, "\n",
-      "BioProject ID:", experiment, "\n",
-      "Epigenetic Class:", epigenetic_class, "\n",
-      "Tissue:", sample_collection_site, "\n",
-      "Disease:", oncotree_primary_disease
+      "Contrast:",
+      contrast,
+      "\n",
+      "BioProject ID:",
+      experiment,
+      "\n",
+      "Epigenetic Class:",
+      epigenetic_class,
+      "\n",
+      "Tissue:",
+      sample_collection_site,
+      "\n",
+      "Disease:",
+      oncotree_primary_disease
     ),
     type = "scatter",
     mode = "markers"
@@ -170,7 +189,7 @@ pcaUI <- function(id) {
         icon = icon("gear")
       ),
       plotly::plotlyOutput(NS(id, "biplot")),
-      gt::gt_output(NS(id, "table"))
+      DT::dataTableOutput(NS(id, "table"))
     )
   )
 }
@@ -188,7 +207,8 @@ pcaServer <- function(id, se, keep) {
       )
 
       # Select the relevant data based on selected IDs and features
-      keep_rows <- switch(input$features,
+      keep_rows <- switch(
+        input$features,
         gene = SummarizedExperiment::rowData(se)$feature_type == "Gene",
         TE = SummarizedExperiment::rowData(se)$feature_type == "TE",
         both = rep(TRUE, nrow(se))
@@ -196,7 +216,8 @@ pcaServer <- function(id, se, keep) {
 
       filtered <- se[keep_rows, keep()]
       df <- data.frame(SummarizedExperiment::colData(filtered))
-      m <- switch(input$dataset,
+      m <- switch(
+        input$dataset,
         lfc = SummarizedExperiment::assay(filtered, "logFC"),
         p = SummarizedExperiment::assay(filtered, "P.Value"),
         z = SummarizedExperiment::assay(filtered, "z")
@@ -204,21 +225,27 @@ pcaServer <- function(id, se, keep) {
 
       # Use only complete cases if selected
       if (isTRUE(input$complete)) {
-        has_missing <- DelayedMatrixStats::rowAnyNAs(SummarizedExperiment::assay(filtered, "P.Value"))
+        has_missing <- DelayedMatrixStats::rowAnyNAs(SummarizedExperiment::assay(
+          filtered,
+          "P.Value"
+        ))
         m <- m[!has_missing, ]
       }
 
       # Remove zero-variance features to avoid PCA failing
       if (is.na(input$removeVar) || input$removeVar == 0) {
-        m <- m[DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE) != 0, ]
+        m <- m[
+          DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE) != 0,
+        ]
       } else {
         v <- DelayedMatrixStats::rowVars(m, useNames = FALSE, na.rm = TRUE)
-        o <- order(v, decreasing=TRUE)
+        o <- order(v, decreasing = TRUE)
         m <- head(m[o, ], n = max(1, ncol(m) * (1 - input$removeVar)))
       }
 
       # Select the PCA algorithm
-      algo <- switch(input$algorithm,
+      algo <- switch(
+        input$algorithm,
         fast = BiocSingular::FastAutoParam(),
         irlba = BiocSingular::IrlbaParam(),
         random = BiocSingular::RandomParam(),
@@ -254,7 +281,8 @@ pcaServer <- function(id, se, keep) {
 
       shinyWidgets::closeSweetAlert()
       return(result)
-    }) |> bindEvent(input$run)
+    }) |>
+      bindEvent(input$run)
 
     # Display a biplot of the PCA results
     output$biplot <- plotly::renderPlotly({
@@ -266,41 +294,15 @@ pcaServer <- function(id, se, keep) {
       }
     })
 
-    output$table <- gt::render_gt({
+    output$table <- DT::renderDataTable({
       d <- plotly::event_data("plotly_selected")
       df <- pcaobj()$metadata
+
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
 
-      df |>
-        gt::gt() |>
-        gt::cols_hide(columns = c(id, batch, mutation, comment, description)) |>
-        gt::cols_move(c(sample_collection_site, oncotree_primary_disease), c(cell_line)) |>
-        gt::cols_label(
-          .list = c(
-            "id" = "ID",
-            "experiment" = "BioProject ID",
-            "contrast" = "Contrast",
-            "cell_line" = "Cell Line",
-            "drug" = "Drug",
-            "dose" = "Dose",
-            "time_hr" = "Time (hr)",
-            "description" = "Description",
-            "epigenetic_class" = "Epigenetic Class",
-            "sample_collection_site" = "Sample Collection Site",
-            "oncotree_primary_disease" = "Primary Disease"
-          )
-        ) |>
-        gt::cols_width(
-          description ~ px(450),
-          contrast ~ px(300),
-          experiment ~ px(150)
-        ) |>
-        gt::tab_header(
-          title = gt::md("**Selected PC Data**")
-        ) |>
-        gt::opt_interactive(use_compact_mode = TRUE)
+      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
     })
   })
 }

@@ -17,14 +17,13 @@ DelayedArray::setAutoBlockSize(250e6)
 
 pathways <- readRDS("data/pathways.rds")
 pathway_dt <- data.table::fread(
-  "data/pathway_dt.tsv.gz", 
-  sep = "\t", 
-  colClasses = c("character", "character"), 
+  "data/pathway_dt.tsv.gz",
+  sep = "\t",
+  colClasses = c("character", "character"),
   key = "Name"
-  )
+)
 
 # App ---------------------------------------------------------------------
-
 
 ui <- navbarPage(
   "TEDEdb App",

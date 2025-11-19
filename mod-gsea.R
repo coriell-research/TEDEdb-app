@@ -92,22 +92,25 @@ gseaUI <- function(id, pathway_names) {
         icon = icon("gear")
       ),
       plotOutput(NS(id, "plot")),
-      gt::gt_output(NS(id, "table"))
+      DT::dataTableOutput(NS(id, "table"))
     )
   )
 }
 
 gseaServer <- function(id, se, pathways, pathway_dt) {
   moduleServer(id, function(input, output, session) {
-    
     choices <- sort(unique(se[["id"]]))
-    updateSelectizeInput(session, "ID", choices = choices, 
-                         selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr", 
-                         server = TRUE)
-    
+    updateSelectizeInput(
+      session,
+      "ID",
+      choices = choices,
+      selected = "PRJNA413957.YB5.HH1.10uM_vs_DMSO_96hr",
+      server = TRUE
+    )
+
     data <- reactive({
       req(input$ID)
-      
+
       shinyWidgets::show_alert(
         title = "Performing GSEA",
         text = "Please Wait...",
@@ -116,7 +119,10 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       )
 
       # Subset for only genes
-      filtered <- se[SummarizedExperiment::rowData(se)$feature_type == "Gene", input$ID]
+      filtered <- se[
+        SummarizedExperiment::rowData(se)$feature_type == "Gene",
+        input$ID
+      ]
       z_stats <- SummarizedExperiment::assay(filtered, "z")[, 1]
       names(z_stats) <- rownames(filtered)
       z_stats <- z_stats[!is.na(z_stats)]
@@ -132,12 +138,16 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       res <- res[order(padj)]
 
       # Make the GSEA plot from the top result
-      shinyWidgets::updatePickerInput(session, "geneset", selected = res[1, pathway])
+      shinyWidgets::updatePickerInput(
+        session,
+        "geneset",
+        selected = res[1, pathway]
+      )
       shinyWidgets::closeSweetAlert()
-      
+
       return(list(results = res, stats = z_stats))
-      
-    }) |> bindEvent(input$run)
+    }) |>
+      bindEvent(input$run)
 
     # Enrichment Plot
     eplot <- reactive({
@@ -152,23 +162,17 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
     output$plot <- renderPlot(eplot())
 
     # GSEA results table
-    output$table <- gt::render_gt({
+    output$table <- DT::renderDataTable({
       df <- data()[["results"]]
-      
+
       validate(
         need(
           is.data.frame(df) && nrow(df) > 0,
           "Please select an experimental contrast to view results."
         )
       )
-      
-      df |>
-        gt::gt() |>
-        gt::fmt_number(columns = c("log2err", "ES", "NES"), decimals = 1) |> 
-        gt::fmt_scientific(columns = c("pval", "padj")) |> 
-        gt::cols_width(pathway ~ px(300), leadingEdge ~ px(500)) |>
-        gt::tab_header(title = gt::md("**GSEA Results**")) |>
-        gt::opt_interactive()
+
+      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
     })
 
     output$download <- downloadHandler(
@@ -177,12 +181,23 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
       },
       content = function(file) {
         tmp <- tempdir()
-        
+
         data_path <- file.path(tmp, "data.tsv")
         eplot_path <- file.path(tmp, "enrichment-plot.pdf")
-        
-        data.table::fwrite(data()[["results"]], data_path, sep = "\t", sep2 = c("", " ", ""))
-        ggplot2::ggsave(eplot_path, plot = eplot(), device = "pdf", width = 8, height = 6)
+
+        data.table::fwrite(
+          data()[["results"]],
+          data_path,
+          sep = "\t",
+          sep2 = c("", " ", "")
+        )
+        ggplot2::ggsave(
+          eplot_path,
+          plot = eplot(),
+          device = "pdf",
+          width = 8,
+          height = 6
+        )
 
         files <- c(data_path, eplot_path)
 
