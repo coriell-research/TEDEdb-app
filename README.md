@@ -1,9 +1,6 @@
-## Cancer Differential Expression Database App
+## TEDEdb-app
 
-This is a complete rewrite of the cancer meta-analysis app with the goal of making the app modular, 
-tested, and robust enough to release as a user-facing tool. 
-
-Currently this app is hosted solely on Coriell's network. In order to run the app locally it is 
-necessary to have a copy of the data directory which, due to file size limitations on GitHub, is 
-too large to host in this repository, if you wish to run this app locally please contact me for
-a copy of the app data (~1 Gb) compressed data.
+This repository contains the code for the "Transposable Element Differential Expression Database" 
+Shiny application. The app is organized into modules for each page. A 'data' directory containing 
+the resources needed to run the app is located in the [appdata](https://rutgers.app.box.com/s/sqi59kadhd0yo4f7rgfojw4573w17byi/folder/306967701072) directory of the database Box drive. The 
+DESCRIPTION file lists required dependencies. 
