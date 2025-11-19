@@ -1,0 +1,30 @@
+Package: TEDEdb-app
+Title: Shiny Application for TEDEdb
+Version: 0.0.1
+Authors@R: 
+    person("Gennaro", "Calendo", , "gcalendo@coriell.org", role = c("aut", "cre"))
+Description: Transposable Element Differential Expression Database Shiny application 
+License: MIT + file LICENSE
+BugReports: https://github.com/coriell-research/TEDEdb-app/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: 
+  shiny,
+  data.table,
+  HDF5Array,
+  SummarizedExperiment,
+  shinythemes,
+  shinyWidgets,
+  DT,
+  fgsea,
+  DelayedArray,
+  DelayedMatrixStats,
+  ggplot2,
+  plotly,
+  metapod,
+  clusterProfiler,
+  enrichplot,
+  BiocSingular,
+  PCAtools,
+  coriell
