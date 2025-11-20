@@ -92,7 +92,7 @@ selectIdUI <- function(id) {
   )
 }
 
-selectIdServer <- function(id, se) {
+selectIdServer <- function(id, se, choices) {
   moduleServer(id, function(input, output, session) {
     filter_cols <- c(
       "experiment",
@@ -110,8 +110,13 @@ selectIdServer <- function(id, se) {
 
     # Update the selections on the server-side
     lapply(filter_cols, function(col) {
-      choices <- sort(unique(se[[col]]))
-      updateSelectizeInput(session, col, choices = choices, server = TRUE)
+      updateSelectizeInput(
+        session,
+        col,
+        choices = choices[[col]],
+        server = TRUE,
+        options = list(maxOptions = 10)
+      )
     })
 
     # Iteratively filter the SE object

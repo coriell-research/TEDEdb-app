@@ -14,6 +14,7 @@ source("mod-overrep.R")
 # Load global data
 se <- HDF5Array::loadHDF5SummarizedExperiment("data/se_hdf5")
 DelayedArray::setAutoBlockSize(250e6)
+choices <- lapply(SummarizedExperiment::colData(se), \(x) sort(unique(x)))
 
 pathways <- readRDS("data/pathways.rds")
 pathway_dt <- data.table::fread(
@@ -72,7 +73,7 @@ ui <- navbarPage(
 )
 
 server <- function(input, output, session) {
-  selected <- selectIdServer("ids", se)
+  selected <- selectIdServer("ids", se, choices)
   pcaServer("pca", se, selected)
   umapServer("umap", se, selected)
   metaServer("meta", se, selected)
