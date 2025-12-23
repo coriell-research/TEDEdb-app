@@ -142,6 +142,8 @@ deServer <- function(id, se) {
 
     output$table <- DT::renderDataTable({
       df <- data()
+      cols <- c("logFC", "AveExpr", "z", "P.Value", "adj.P.Val", "SE")
+      df[, (cols) := lapply(.SD, round, 2), .SDcols = cols]
 
       validate(
         need(
@@ -150,7 +152,13 @@ deServer <- function(id, se) {
         )
       )
 
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        lazyRender = TRUE,
+        style = "bootstrap4",
+        class = 'cell-border stripe'
+      )
     })
 
     output$download <- downloadHandler(
