@@ -47,17 +47,14 @@ plotBiplot <- function(obj, x, y, col) {
       "Contrast:",
       contrast,
       "\n",
-      "BioProject ID:",
+      "BioProject:",
       experiment,
       "\n",
-      "Epigenetic Class:",
-      epigenetic_class,
+      "Treatment:",
+      treatment,
       "\n",
-      "Tissue:",
-      sample_collection_site,
-      "\n",
-      "Disease:",
-      oncotree_primary_disease
+      "Cell Line:",
+      cell_line
     ),
     type = "scatter",
     mode = "markers"
@@ -177,9 +174,11 @@ pcaUI <- function(id) {
           NS(id, "col"),
           label = "Color By",
           choices = c(
-            "Epigenetic Class" = "epigenetic_class",
-            "Collection Site" = "sample_collection_site",
-            "Drug" = "drug",
+            "Treatment" = "treatment",
+            "Mechanism of Action" = "mechanism_of_action",
+            "Epigenetic Class (fine)" = "epigenetic_class_fine",
+            "Cell Line" = "cell_line",
+            "Cell Lineage" = "oncotree_lineage",
             "Primary Disease" = "oncotree_primary_disease",
             "BioProject" = "experiment"
           )
@@ -296,13 +295,46 @@ pcaServer <- function(id, se, keep) {
 
     output$table <- DT::renderDataTable({
       d <- plotly::event_data("plotly_selected")
-      df <- pcaobj()$metadata
+
+      keep_cols <- c(
+        "experiment",
+        "contrast",
+        "treatment",
+        "clinical_phase",
+        "mechanism_of_action",
+        "targets",
+        "epigenetic_class",
+        "epigenetic_class_fine",
+        "stripped_cell_line",
+        "oncotree_lineage",
+        "oncotree_primary_disease"
+      )
+
+      df <- pcaobj()$metadata[, keep_cols]
 
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
 
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        colnames = c(
+          "BioProject" = "experiment",
+          "Contrast" = "contrast",
+          "Treatment" = "treatment",
+          "Clinical Phase" = "clinical_phase",
+          "Mechanism of Action" = "mechanism_of_action",
+          "Target(s)" = "targets",
+          "Epigenetic Class" = "epigenetic_class",
+          "Epigenetic Class (fine)" = "epigenetic_class_fine",
+          "Cell Line" = "stripped_cell_line",
+          "Cell Lineage" = "oncotree_lineage",
+          "Primary Disease" = "oncotree_primary_disease"
+        ),
+        lazyRender = FALSE,
+        style = "bootstrap4"
+      )
     })
   })
 }
