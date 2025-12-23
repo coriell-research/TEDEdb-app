@@ -27,4 +27,5 @@ Imports:
   enrichplot,
   BiocSingular,
   PCAtools,
-  coriell
+  coriell,
+  uwot
