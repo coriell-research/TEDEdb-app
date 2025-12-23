@@ -105,8 +105,52 @@ rankServer <- function(id, se, keep) {
     })
 
     output$table <- DT::renderDataTable({
-      df <- data()
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      keep_cols <- c(
+        "experiment",
+        "contrast",
+        "Pct_up",
+        "Pct_down",
+        "Pct_non",
+        "N_up",
+        "N_down",
+        "treatment",
+        "clinical_phase",
+        "mechanism_of_action",
+        "targets",
+        "epigenetic_class",
+        "epigenetic_class_fine",
+        "stripped_cell_line",
+        "oncotree_lineage",
+        "oncotree_primary_disease"
+      )
+
+      # This is a data.table (..keep_cols needed)
+      df <- data()[, ..keep_cols]
+
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        colnames = c(
+          "BioProject" = "experiment",
+          "Contrast" = "contrast",
+          "Percent Up" = "Pct_up",
+          "Percent Down" = "Pct_down",
+          "Percent Non-DE" = "Pct_non",
+          "N Up" = "N_up",
+          "N Down" = "N_down",
+          "Treatment" = "treatment",
+          "Clinical Phase" = "clinical_phase",
+          "Mechanism of Action" = "mechanism_of_action",
+          "Target(s)" = "targets",
+          "Epigenetic Class" = "epigenetic_class",
+          "Epigenetic Class (fine)" = "epigenetic_class_fine",
+          "Cell Line" = "stripped_cell_line",
+          "Cell Lineage" = "oncotree_lineage",
+          "Primary Disease" = "oncotree_primary_disease"
+        ),
+        lazyRender = FALSE,
+        style = "bootstrap4"
+      )
     })
 
     output$download <- downloadHandler(
