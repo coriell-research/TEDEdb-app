@@ -247,7 +247,24 @@ overrepServer <- function(id, se) {
         idcol = "Gene Set"
       )
 
-      DT::datatable(dt, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      cols <- c(
+        "RichFactor",
+        "FoldEnrichment",
+        "zScore",
+        "pvalue",
+        "p.adjust",
+        "qvalue"
+      )
+      dt[, (cols) := lapply(.SD, round, 3), .SDcols = cols]
+      dt[, geneID := NULL]
+
+      DT::datatable(
+        dt,
+        rownames = FALSE,
+        lazyRender = TRUE,
+        style = "bootstrap4",
+        class = 'cell-border stripe',
+      )
     })
 
     # Dotplot
