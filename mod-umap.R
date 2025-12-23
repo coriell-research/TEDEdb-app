@@ -32,25 +32,22 @@ plotUmap <- function(df, col) {
   plotly::plot_ly(
     data = df,
     customdata = rownames(df),
-    x = ~UMAP1,
-    y = ~UMAP2,
+    x = ~V1,
+    y = ~V2,
     color = ~ get(col),
     size = 12,
     text = ~ paste(
       "Contrast:",
       contrast,
       "\n",
-      "BioProject ID:",
+      "BioProject:",
       experiment,
       "\n",
-      "Epigenetic Class:",
-      epigenetic_class,
+      "Treatment:",
+      treatment,
       "\n",
-      "Collection Site:",
-      sample_collection_site,
-      "\n",
-      "Primary Disease:",
-      oncotree_primary_disease
+      "Cell Line:",
+      cell_line
     ),
     type = "scatter",
     mode = "markers"
@@ -134,18 +131,10 @@ umapUI <- function(id) {
       numericInput(
         NS(id, "mindist"),
         "Minimum distance",
-        value = 0.1,
+        value = 0.01,
         min = 0,
         max = 1,
         step = 0.1
-      ),
-      numericInput(
-        NS(id, "epochs"),
-        "Iterations",
-        value = 100,
-        min = 1,
-        max = Inf,
-        step = 100
       ),
       shinyWidgets::pickerInput(
         NS(id, "metric"),
@@ -167,9 +156,11 @@ umapUI <- function(id) {
           NS(id, "col"),
           label = "Color By",
           choices = c(
-            "Epigenetic Class" = "epigenetic_class",
-            "Collection Site" = "sample_collection_site",
-            "Drug" = "drug",
+            "Epigenetic Class (fine)" = "epigenetic_class_fine",
+            "Treatment" = "treatment",
+            "Mechanism of Action" = "mechanism_of_action",
+            "Cell Line" = "cell_line",
+            "Cell Lineage" = "oncotree_lineage",
             "Primary Disease" = "oncotree_primary_disease",
             "BioProject" = "experiment"
           )
@@ -245,12 +236,11 @@ umapServer <- function(id, se, keep) {
             BSPARAM = BiocSingular::FastAutoParam()
           )
 
-          coriell::UMAP(
-            pca_res,
+          uwot::umap(
+            pca_res$rotated,
             n_neighbors = input$neighbors,
             metric = input$metric,
-            min_dist = input$mindist,
-            n_epochs = input$epochs
+            min_dist = input$mindist
           )
         },
         error = function(e) {
@@ -268,6 +258,9 @@ umapServer <- function(id, se, keep) {
 
       shinyWidgets::closeSweetAlert()
 
+      # Add metadata to the UMAP result
+      result <- cbind(as.data.frame(result), df)
+
       return(result)
     }) |>
       bindEvent(input$run)
@@ -284,13 +277,46 @@ umapServer <- function(id, se, keep) {
 
     output$table <- DT::renderDataTable({
       d <- plotly::event_data("plotly_selected")
-      df <- udata()
+
+      keep_cols <- c(
+        "experiment",
+        "contrast",
+        "treatment",
+        "clinical_phase",
+        "mechanism_of_action",
+        "targets",
+        "epigenetic_class",
+        "epigenetic_class_fine",
+        "stripped_cell_line",
+        "oncotree_lineage",
+        "oncotree_primary_disease"
+      )
+
+      df <- udata()[, keep_cols]
 
       if (!is.null(d)) {
         df <- df[d$customdata, ]
       }
 
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        colnames = c(
+          "BioProject" = "experiment",
+          "Contrast" = "contrast",
+          "Treatment" = "treatment",
+          "Clinical Phase" = "clinical_phase",
+          "Mechanism of Action" = "mechanism_of_action",
+          "Target(s)" = "targets",
+          "Epigenetic Class" = "epigenetic_class",
+          "Epigenetic Class (fine)" = "epigenetic_class_fine",
+          "Cell Line" = "stripped_cell_line",
+          "Cell Lineage" = "oncotree_lineage",
+          "Primary Disease" = "oncotree_primary_disease"
+        ),
+        lazyRender = FALSE,
+        style = "bootstrap4"
+      )
     })
   })
 }

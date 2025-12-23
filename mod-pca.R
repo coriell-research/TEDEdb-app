@@ -174,9 +174,9 @@ pcaUI <- function(id) {
           NS(id, "col"),
           label = "Color By",
           choices = c(
+            "Epigenetic Class (fine)" = "epigenetic_class_fine",
             "Treatment" = "treatment",
             "Mechanism of Action" = "mechanism_of_action",
-            "Epigenetic Class (fine)" = "epigenetic_class_fine",
             "Cell Line" = "cell_line",
             "Cell Lineage" = "oncotree_lineage",
             "Primary Disease" = "oncotree_primary_disease",
