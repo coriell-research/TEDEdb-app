@@ -135,7 +135,7 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         minSize = input$min,
         maxSize = input$max
       )
-      res <- res[order(padj)]
+      res <- res[order(padj), ]
 
       # Make the GSEA plot from the top result
       shinyWidgets::updatePickerInput(
@@ -172,7 +172,22 @@ gseaServer <- function(id, se, pathways, pathway_dt) {
         )
       )
 
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      cols <- c("pval", "padj", "log2err", "ES", "NES", "size")
+      df[, (cols) := lapply(.SD, round, 3), .SDcols = cols]
+      df[, leadingEdge := NULL]
+
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        colnames = c(
+          "Pathway" = "pathway",
+          "P.Value" = "pval",
+          "adj.P.Val" = "padj"
+        ),
+        lazyRender = TRUE,
+        style = "bootstrap4",
+        class = 'cell-border stripe'
+      )
     })
 
     output$download <- downloadHandler(
