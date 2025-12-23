@@ -183,7 +183,8 @@ selectIdServer <- function(id, se, choices) {
             "Primary Disease" = "oncotree_primary_disease"
           ),
           lazyRender = FALSE,
-          style = "bootstrap4"
+          style = "bootstrap4",
+          filter = "top"
         )
       },
       server = TRUE
