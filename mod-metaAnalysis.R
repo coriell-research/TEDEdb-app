@@ -254,7 +254,24 @@ metaServer <- function(id, se, keep) {
         df <- df[Feature %chin% d$customdata]
       }
 
-      DT::datatable(df, rownames = FALSE, lazyRender = TRUE, style = "auto")
+      cols <- c(
+        "Combined.Pval",
+        "Rep.logFC",
+        "Rep.Pval",
+        "Median.logFC",
+        "Mean.logFC",
+        "Min.logFC",
+        "Max.logFC"
+      )
+      df[, (cols) := lapply(.SD, round, 2), .SDcols = cols]
+
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        lazyRender = TRUE,
+        style = "bootstrap4",
+        class = 'cell-border stripe'
+      )
     })
 
     output$download <- downloadHandler(
