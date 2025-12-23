@@ -15,60 +15,53 @@ selectIdUI <- function(id) {
         options = list(placeholder = "e.g. 'PRJNA12345'")
       ),
       selectizeInput(
-        NS(id, "contrast"),
-        "Contrast(s)",
-        choices = NULL,
-        multiple = TRUE,
-        options = list(placeholder = "e.g. Decitabine_vs_DMSO")
-      ),
-      selectizeInput(
-        NS(id, "cell_line"),
-        "Cell Line(s)",
-        choices = NULL,
-        multiple = TRUE,
-        options = list(placeholder = "e.g. SW48")
-      ),
-      selectizeInput(
-        NS(id, "drug"),
+        NS(id, "treatment"),
         "Drug(s)",
         choices = NULL,
         multiple = TRUE,
         options = list(placeholder = "e.g. Decitabine")
       ),
       selectizeInput(
+        NS(id, "clinical_phase"),
+        "Clinical Phase",
+        choices = NULL,
+        multiple = TRUE,
+        options = list(placeholder = "e.g. Preclinical")
+      ),
+      selectizeInput(
         NS(id, "epigenetic_class"),
         "Epigenetic Class(es)",
+        choices = NULL,
+        multiple = TRUE,
+        options = list(placeholder = "e.g. Reader")
+      ),
+      selectizeInput(
+        NS(id, "epigenetic_class_fine"),
+        "Epigenetic Class(es) - Fine",
         choices = NULL,
         multiple = TRUE,
         options = list(placeholder = "e.g. HDACi")
       ),
       selectizeInput(
-        NS(id, "drug_class"),
-        "Drug Class(es)",
+        NS(id, "mechanism_of_action"),
+        "Mechanism of Action",
         choices = NULL,
         multiple = TRUE,
-        options = list(placeholder = "e.g. Kinase inhibitor")
+        options = list(placeholder = "e.g. cdk inhibitor")
       ),
       selectizeInput(
-        NS(id, "mode_of_action"),
-        "Mode of Action",
+        NS(id, "targets"),
+        "Target(s)",
         choices = NULL,
         multiple = TRUE,
-        options = list(placeholder = "e.g. CDK9 inhibitor")
+        options = list(placeholder = "e.g. CDK12")
       ),
       selectizeInput(
-        NS(id, "target"),
-        "Target",
+        NS(id, "stripped_cell_line"),
+        "Cell Line(s)",
         choices = NULL,
         multiple = TRUE,
-        options = list(placeholder = "e.g. DNMT1")
-      ),
-      selectizeInput(
-        NS(id, "sample_collection_site"),
-        "Collection Site(s)",
-        choices = NULL,
-        multiple = TRUE,
-        options = list(placeholder = "e.g. Colon")
+        options = list(placeholder = "e.g. SW48")
       ),
       selectizeInput(
         NS(id, "oncotree_primary_disease"),
@@ -78,11 +71,18 @@ selectIdUI <- function(id) {
         options = list(placeholder = "e.g. Acute Myeloid Leukemia")
       ),
       selectizeInput(
-        NS(id, "outlier_flags"),
-        "Outlier Flag(s)",
+        NS(id, "oncotree_lineage"),
+        "Lineage(s)",
         choices = NULL,
         multiple = TRUE,
-        options = list(placeholder = "e.g. None")
+        options = list(placeholder = "e.g. Breast")
+      ),
+      selectizeInput(
+        NS(id, "sample_collection_site"),
+        "Collection Site(s)",
+        choices = NULL,
+        multiple = TRUE,
+        options = list(placeholder = "e.g. Colon")
       ),
       downloadButton(NS(id, "download"))
     ),
@@ -96,16 +96,16 @@ selectIdServer <- function(id, se, choices) {
   moduleServer(id, function(input, output, session) {
     filter_cols <- c(
       "experiment",
-      "contrast",
-      "cell_line",
-      "drug",
+      "treatment",
+      "clinical_phase",
       "epigenetic_class",
-      "drug_class",
-      "mode_of_action",
-      "target",
-      "sample_collection_site",
+      "epigenetic_class_fine",
+      "mechanism_of_action",
+      "targets",
+      "stripped_cell_line",
       "oncotree_primary_disease",
-      "outlier_flags"
+      "oncotree_lineage",
+      "sample_collection_site"
     )
 
     # Update the selections on the server-side
@@ -147,21 +147,49 @@ selectIdServer <- function(id, se, choices) {
     # Render the output table
     output$table <- DT::renderDataTable(
       {
-        df_display <- selected_df()
+        keep_cols <- c(
+          "experiment",
+          "contrast",
+          "treatment",
+          "clinical_phase",
+          "mechanism_of_action",
+          "targets",
+          "epigenetic_class",
+          "epigenetic_class_fine",
+          "stripped_cell_line",
+          "oncotree_lineage",
+          "oncotree_primary_disease"
+        )
+
+        df <- selected_df()[, keep_cols]
 
         # Do not render the table if there is no data
-        req(nrow(df_display) > 0)
+        req(nrow(df) > 0)
 
         DT::datatable(
-          df_display,
+          df,
           rownames = FALSE,
+          colnames = c(
+            "BioProject" = "experiment",
+            "Contrast" = "contrast",
+            "Treatment" = "treatment",
+            "Clinical Phase" = "clinical_phase",
+            "Mechanism of Action" = "mechanism_of_action",
+            "Target(s)" = "targets",
+            "Epigenetic Class" = "epigenetic_class",
+            "Epigenetic Class (fine)" = "epigenetic_class_fine",
+            "Cell Line" = "stripped_cell_line",
+            "Cell Lineage" = "oncotree_lineage",
+            "Primary Disease" = "oncotree_primary_disease"
+          ),
           lazyRender = FALSE,
-          style = "auto"
+          style = "bootstrap4"
         )
       },
       server = TRUE
     )
 
+    # Save all annotations to outfile - not just selected columns
     output$download <- downloadHandler(
       filename = function() {
         paste0("selected-data_", format(Sys.time(), "%Y-%m-%d"), ".zip")
