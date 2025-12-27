@@ -62,7 +62,8 @@ metaUI <- function(id) {
             "Median.logFC",
             "Mean.logFC",
             "Min.logFC",
-            "Max.logFC"
+            "Max.logFC",
+            "Meta.logFC"
           ),
           selected = "Rep.logFC"
         ),
@@ -130,6 +131,7 @@ metaServer <- function(id, se, keep) {
               filtered,
               method,
               pval = selected_assay,
+              se = "SE",
               min.prop = input$min_prop,
               min.n = input$min_n,
               log.p = isTRUE(input$logp)
@@ -139,6 +141,7 @@ metaServer <- function(id, se, keep) {
               filtered,
               method,
               pval = selected_assay,
+              se = "SE",
               log.p = isTRUE(input$logp)
             )
           }
@@ -261,7 +264,8 @@ metaServer <- function(id, se, keep) {
         "Median.logFC",
         "Mean.logFC",
         "Min.logFC",
-        "Max.logFC"
+        "Max.logFC",
+        "Meta.logFC"
       )
       df[, (cols) := lapply(.SD, round, 2), .SDcols = cols]
 
