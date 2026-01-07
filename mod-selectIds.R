@@ -114,8 +114,7 @@ selectIdServer <- function(id, se, choices) {
         session,
         col,
         choices = choices[[col]],
-        server = TRUE,
-        options = list(maxOptions = 10)
+        server = TRUE
       )
     })
 
