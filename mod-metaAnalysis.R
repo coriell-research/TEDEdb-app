@@ -58,20 +58,20 @@ metaUI <- function(id) {
           NS(id, "x"),
           label = "x",
           choices = c(
+            "Meta.logFC",
             "Rep.logFC",
             "Median.logFC",
             "Mean.logFC",
             "Min.logFC",
-            "Max.logFC",
-            "Meta.logFC"
+            "Max.logFC"
           ),
-          selected = "Rep.logFC"
+          selected = "Meta.logFC"
         ),
         selectInput(
           NS(id, "y"),
           label = "y",
-          choices = c("Rep.Pval", "Combined.Pval"),
-          selected = "Combined.Pval"
+          choices = c("Meta.Pval", "Rep.Pval", "Combined.Pval"),
+          selected = "Meta.Pval"
         ),
         status = "danger",
         icon = icon("gear")
@@ -265,7 +265,9 @@ metaServer <- function(id, se, keep) {
         "Mean.logFC",
         "Min.logFC",
         "Max.logFC",
-        "Meta.logFC"
+        "Meta.logFC",
+        "Meta.Pval",
+        "Meta.z"
       )
       df[, (cols) := lapply(.SD, round, 2), .SDcols = cols]
 
