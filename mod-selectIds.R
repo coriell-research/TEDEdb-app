@@ -84,6 +84,13 @@ selectIdUI <- function(id) {
         multiple = TRUE,
         options = list(placeholder = "e.g. Colon")
       ),
+      selectizeInput(
+        NS(id, "outlier_flags"),
+        "Outlier Flag(s)",
+        choices = NULL,
+        multiple = TRUE,
+        options = list(placeholder = "e.g. None")
+      ),
       downloadButton(NS(id, "download"))
     ),
     mainPanel(
@@ -105,7 +112,8 @@ selectIdServer <- function(id, se, choices) {
       "stripped_cell_line",
       "oncotree_primary_disease",
       "oncotree_lineage",
-      "sample_collection_site"
+      "sample_collection_site",
+      "outlier_flags"
     )
 
     # Update the selections on the server-side
