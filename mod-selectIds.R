@@ -91,6 +91,21 @@ selectIdUI <- function(id) {
         multiple = TRUE,
         options = list(placeholder = "e.g. None")
       ),
+
+      tags$hr(),
+
+      # Dynamic selection of additional variables
+      selectizeInput(
+        NS(id, "additional_vars"),
+        "Filter by additional variables:",
+        choices = NULL,
+        multiple = TRUE,
+        options = list(placeholder = "e.g. dose")
+      ),
+
+      uiOutput(NS(id, "dynamic_filters_ui")),
+
+      tags$hr(),
       downloadButton(NS(id, "download"))
     ),
     mainPanel(
@@ -116,7 +131,6 @@ selectIdServer <- function(id, se, choices) {
       "outlier_flags"
     )
 
-    # Update the selections on the server-side
     lapply(filter_cols, function(col) {
       updateSelectizeInput(
         session,
@@ -126,11 +140,40 @@ selectIdServer <- function(id, se, choices) {
       )
     })
 
-    # Iteratively filter the SE object
+    extra_cols <- setdiff(names(choices), filter_cols)
+    updateSelectizeInput(
+      session,
+      "additional_vars",
+      choices = extra_cols,
+      server = TRUE
+    )
+
+    output$dynamic_filters_ui <- renderUI({
+      req(input$additional_vars)
+
+      dynamic_inputs <- lapply(input$additional_vars, function(col_name) {
+        clean_label <- tools::toTitleCase(gsub("_", " ", col_name))
+
+        selectizeInput(
+          inputId = session$ns(col_name),
+          label = clean_label,
+          choices = choices[[col_name]],
+          multiple = TRUE,
+          options = list(placeholder = paste("Select", clean_label))
+        )
+      })
+
+      do.call(tagList, dynamic_inputs)
+    })
+
     filtered_se <- reactive({
       filtered <- se
-      for (col_name in filter_cols) {
+
+      all_active_filters <- c(filter_cols, input$additional_vars)
+
+      for (col_name in all_active_filters) {
         selected_values <- input[[col_name]]
+
         if (!is.null(selected_values) && length(selected_values) > 0) {
           filtered <- filtered[,
             filtered[[col_name]] %in% selected_values,
@@ -151,7 +194,6 @@ selectIdServer <- function(id, se, choices) {
       }
     })
 
-    # Render the output table
     output$table <- DT::renderDataTable(
       {
         keep_cols <- c(
@@ -168,9 +210,8 @@ selectIdServer <- function(id, se, choices) {
           "oncotree_primary_disease"
         )
 
-        df <- selected_df()[, keep_cols]
+        df <- selected_df()[, keep_cols, drop = FALSE]
 
-        # Do not render the table if there is no data
         req(nrow(df) > 0)
 
         DT::datatable(
@@ -197,7 +238,6 @@ selectIdServer <- function(id, se, choices) {
       server = TRUE
     )
 
-    # Save all annotations to outfile - not just selected columns
     output$download <- downloadHandler(
       filename = function() {
         paste0("selected-data_", format(Sys.time(), "%Y-%m-%d"), ".zip")
