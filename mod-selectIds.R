@@ -216,7 +216,7 @@ selectIdServer <- function(id, se, choices) {
 
         # Convert the experiment column into clickable HTML links
         df$experiment <- paste0(
-          '<a href="https://data.coriell.org/srv/data/bioprojects/',
+          '<a href="https://data.coriell.org/TEDEdb/bioprojects/',
           df$experiment,
           '" target="_blank">',
           df$experiment,
