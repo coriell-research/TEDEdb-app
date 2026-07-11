@@ -10,6 +10,7 @@ source("mod-ranking.R")
 source("mod-de.R")
 source("mod-gsea.R")
 source("mod-overrep.R")
+source("mod-qc.R")
 
 # Load global data
 se <- HDF5Array::loadHDF5SummarizedExperiment("data/se_hdf5")
@@ -67,6 +68,10 @@ ui <- navbarPage(
     overrepUI("overrep")
   ),
   tabPanel(
+    "BioProject QC",
+    qcPlotsUI("qc")
+  ),
+  tabPanel(
     "About",
     htmltools::includeMarkdown("about.md")
   )
@@ -81,6 +86,7 @@ server <- function(input, output, session) {
   deServer("de", se)
   gseaServer("gsea", se, pathways, pathway_dt)
   overrepServer("overrep", se)
+  qcPlotsServer("qc", se)
 }
 
 shinyApp(ui, server)
