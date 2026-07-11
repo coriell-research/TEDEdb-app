@@ -22,12 +22,17 @@ qcPlotsUI <- function(id) {
 
       tags$div(
         style = "margin-bottom: 40px;",
-        tags$h4("Analyze Raw Data Locally"),
+        tags$h4("Download locus-level quants and metadata"),
         tags$p(
-          "Copy and run the snippet below in your local R environment to download ",
-          "and explore the raw SummarizedExperiment object for the selected project."
+          "Copy and run the snippet below in your terminal to download ",
+          "the locus-level data and annotations for this experiment."
         ),
-        uiOutput(NS(id, "code_template"))
+        uiOutput(NS(id, "code_template")),
+        tags$p(
+          "Then copy and run the snippet below in your local R session to ",
+          "create a SummarizedExperiment for the locus-level counts."
+        ),
+        uiOutput(NS(id, "code_template2"))
       )
     )
   )
@@ -40,7 +45,7 @@ qcPlotsServer <- function(id, se) {
       session,
       "selected_project",
       choices = choices,
-      selected = "PRJNA413957",
+      selected = "PRJNA244098",
       server = TRUE
     )
 
@@ -86,27 +91,79 @@ qcPlotsServer <- function(id, se) {
       )
     })
 
+    # wget code for downloading raw data
     output$code_template <- renderUI({
       req(input$selected_project)
 
       markdown_script <- paste0(
         "```r\n",
-        "# Load necessary libraries\n",
-        "library(SummarizedExperiment)\n\n",
-        "# Define the remote FTP path for the selected BioProject\n",
-        "data_url <- 'ftp://data.coriell.org/TEDEdb/BioProjects/",
+
+        "# Download all locus-level quants for this BioProject:\n",
+        "wget -r -np -nH --cut-dirs=3 'https://data.coriell.org/TEDEdb/bioprojects/",
         input$selected_project,
-        "/raw_data.rds'\n",
-        "dest_file <- '",
+        "/quants/'",
+
+        "\n\n# Download Run annotations for this dataset:\n",
+        "wget 'https://data.coriell.org/TEDEdb/bioprojects/",
         input$selected_project,
-        "_raw_data.rds'\n\n",
-        "# Download and import the SummarizedExperiment object\n",
-        "download.file(url = data_url, destfile = dest_file, mode = 'wb')\n",
-        "se <- readRDS(dest_file)\n\n",
-        "# Inspect the object metadata\n",
-        "print(se)\n",
-        "head(colData(se))\n",
+        "/annotation.tsv'",
+
+        "\n\n# Download annotation mapping each locus MD5sum to gene/repElems:\n",
+        "wget https://data.coriell.org/TEDEdb/resources/REdiscoverTE_hg38/tx2gene_REdiscoverTE.tsv.gz\n",
+
         "```"
+      )
+
+      shiny::markdown(markdown_script)
+    })
+
+    # Rscript for locus-level analysis
+    output$code_template2 <- renderUI({
+      req(input$selected_project)
+
+      markdown_script <- paste0(
+        '```r\n',
+        'library(SummarizedExperiment)\n',
+        'library(data.table)\n\n\n',
+        '# List paths to all quant files\n',
+        'quant_files <- list.files(\n',
+        '  path = "quants", \n',
+        '  pattern = "quant.sf.gz", \n',
+        '  recursive = TRUE, \n',
+        '  full.names = TRUE\n',
+        ')\n\n',
+        '# Name each quant file by its Run ID\n',
+        'names(quant_files) <- regmatches(\n',
+        '  quant_files, \n',
+        '  regexpr("SRR[0-9]+", quant_files)\n',
+        ')\n\n',
+        '# Read in counts and convert to a matrix\n',
+        'counts <- rbindlist(\n',
+        '  lapply(quant_files, fread, select = c("Name", "NumReads")), \n',
+        '  idcol = "Run"\n',
+        ')\n',
+        'counts <- dcast(\n',
+        '  data = counts, \n',
+        '  Name ~ Run, \n',
+        '  value.var = "NumReads", \n',
+        '  value.fill = 0\n',
+        ')\n',
+        'counts <- as.matrix(counts, rownames = "Name")\n\n',
+        '# Read in the run-level metadata for the project\n',
+        'metadata <- fread("annotation.tsv")\n',
+        'setDF(metadata, rownames = metadata$Run)\n\n',
+        '# Read in the mapping from MD5 hashsum to feature\n',
+        'features <- fread("tx2gene_REdiscoverTE.tsv.gz")\n',
+        'setDF(features, rownames = features$md5)\n\n',
+        '# Organize in SummarizedExperiment for downstream analysis\n',
+        'se <- SummarizedExperiment(\n',
+        '  assays = list(\n',
+        '    counts = counts[match(rownames(features), rownames(counts)), ]\n',
+        '  ),\n',
+        '  colData = metadata[colnames(counts), ],\n',
+        '  rowData = features\n',
+        ')\n',
+        '```'
       )
 
       shiny::markdown(markdown_script)
